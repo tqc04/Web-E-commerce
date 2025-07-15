@@ -101,39 +101,8 @@ const AdminPage: React.FC = () => {
   const users = usersResponse?.data.content || []
   // const inventory = inventoryResponse?.data.content || []
 
-  // Mock data for demonstration
-  const mockStats: DashboardStats = {
-    totalUsers: 1250,
-    totalProducts: 450,
-    totalOrders: 890,
-    totalRevenue: 125000,
-    recentOrders: [],
-    topProducts: []
-  }
-
-  const mockUsers: User[] = [
-    {
-      id: 1,
-      username: 'john_doe',
-      email: 'john@example.com',
-      firstName: 'John',
-      lastName: 'Doe',
-      role: 'USER',
-      createdAt: '2024-01-15T10:30:00Z'
-    },
-    {
-      id: 2,
-      username: 'admin_user',
-      email: 'admin@example.com',
-      firstName: 'Admin',
-      lastName: 'User',
-      role: 'ADMIN',
-      createdAt: '2024-01-10T09:20:00Z'
-    }
-  ]
-
-  const displayStats = statsError ? mockStats : stats
-  const displayUsers = usersError ? mockUsers : users
+  const displayStats = stats
+  const displayUsers = users
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue)

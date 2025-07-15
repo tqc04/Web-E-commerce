@@ -1,5 +1,6 @@
 package com.example.project.controller;
 
+import com.example.project.dto.OrderDTO;
 import com.example.project.entity.Order;
 import com.example.project.entity.OrderStatus;
 import com.example.project.service.OrderService;
@@ -27,10 +28,14 @@ public class OrderController {
      * Lấy thông tin đơn hàng
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
+    public ResponseEntity<OrderDTO> getOrderById(@PathVariable Long id) {
         try {
-            Optional<Order> order = orderService.findById(id);
-            return order.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+            Optional<Order> orderOpt = orderService.findById(id);
+            if (orderOpt.isPresent()) {
+                OrderDTO orderDTO = OrderDTO.from(orderOpt.get());
+                return ResponseEntity.ok(orderDTO);
+            }
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -40,10 +45,11 @@ public class OrderController {
      * Lấy danh sách đơn hàng theo user
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Page<Order>> getOrdersByUser(@PathVariable Long userId, Pageable pageable) {
+    public ResponseEntity<Page<OrderDTO>> getOrdersByUser(@PathVariable Long userId, Pageable pageable) {
         try {
             Page<Order> orders = orderService.getUserOrders(userId, pageable);
-            return ResponseEntity.ok(orders);
+            Page<OrderDTO> orderDTOs = orders.map(OrderDTO::from);
+            return ResponseEntity.ok(orderDTOs);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -53,7 +59,7 @@ public class OrderController {
      * Tạo đơn hàng mới
      */
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Map<String, Object> orderRequest, HttpServletRequest request) {
+    public ResponseEntity<OrderDTO> createOrder(@RequestBody Map<String, Object> orderRequest, HttpServletRequest request) {
         try {
             Long userId = Long.valueOf(orderRequest.get("userId").toString());
             String shippingAddress = (String) orderRequest.get("shippingAddress");
@@ -74,7 +80,8 @@ public class OrderController {
                 .collect(Collectors.toList());
             
             Order createdOrder = orderService.createOrder(userId, items, shippingAddress, billingAddress, paymentMethod, ipAddress, userAgent);
-            return ResponseEntity.ok(createdOrder);
+            OrderDTO orderDTO = OrderDTO.from(createdOrder);
+            return ResponseEntity.ok(orderDTO);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -128,11 +135,12 @@ public class OrderController {
      * Lấy đơn hàng theo trạng thái
      */
     @GetMapping("/status/{status}")
-    public ResponseEntity<Page<Order>> getOrdersByStatus(@PathVariable String status, Pageable pageable) {
+    public ResponseEntity<Page<OrderDTO>> getOrdersByStatus(@PathVariable String status, Pageable pageable) {
         try {
             OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
             Page<Order> orders = orderService.getOrdersByStatus(orderStatus, pageable);
-            return ResponseEntity.ok(orders);
+            Page<OrderDTO> orderDTOs = orders.map(OrderDTO::from);
+            return ResponseEntity.ok(orderDTOs);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -142,10 +150,13 @@ public class OrderController {
      * Lấy đơn hàng bị flag để review
      */
     @GetMapping("/flagged")
-    public ResponseEntity<List<Order>> getFlaggedOrders() {
+    public ResponseEntity<List<OrderDTO>> getFlaggedOrders() {
         try {
             List<Order> flaggedOrders = orderService.getFlaggedOrders();
-            return ResponseEntity.ok(flaggedOrders);
+            List<OrderDTO> orderDTOs = flaggedOrders.stream()
+                .map(OrderDTO::from)
+                .collect(Collectors.toList());
+            return ResponseEntity.ok(orderDTOs);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

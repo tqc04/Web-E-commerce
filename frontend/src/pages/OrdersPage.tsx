@@ -98,65 +98,7 @@ const OrdersPage: React.FC = () => {
     notificationService.info(`Viewing order #${order.id}`)
   }
 
-  // Mock data for demonstration when API fails
-  const mockOrders: Order[] = [
-    {
-      id: 1,
-      userId: 1,
-      status: 'delivered',
-      totalAmount: 299.99,
-      createdAt: '2024-01-15T10:30:00Z',
-      updatedAt: '2024-01-20T14:20:00Z',
-      items: [
-        {
-          id: 1,
-          productId: 1,
-          quantity: 2,
-          price: 149.99,
-          product: {
-            id: 1,
-            name: 'Wireless Headphones',
-            description: 'High-quality wireless headphones',
-            price: 149.99,
-            category: 'electronics',
-            brand: 'TechBrand',
-            stockQuantity: 50,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
-          }
-        }
-      ]
-    },
-    {
-      id: 2,
-      userId: 1,
-      status: 'shipped',
-      totalAmount: 89.99,
-      createdAt: '2024-01-18T16:45:00Z',
-      updatedAt: '2024-01-19T09:15:00Z',
-      items: [
-        {
-          id: 2,
-          productId: 2,
-          quantity: 1,
-          price: 89.99,
-          product: {
-            id: 2,
-            name: 'Smart Watch',
-            description: 'Feature-rich smartwatch',
-            price: 89.99,
-            category: 'electronics',
-            brand: 'SmartTech',
-            stockQuantity: 25,
-            createdAt: '2024-01-01T00:00:00Z',
-            updatedAt: '2024-01-01T00:00:00Z'
-          }
-        }
-      ]
-    }
-  ]
-
-  const displayOrders = error ? mockOrders : orders
+  const displayOrders = orders
 
   // Show error state
   if (error && !displayOrders.length) {

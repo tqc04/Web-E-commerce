@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import com.example.project.dto.ProductSimpleResponse;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -85,4 +86,25 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     @Query("SELECT AVG(p.averageRating) FROM Product p WHERE p.isActive = true AND p.reviewCount > 0")
     Double getAverageRating();
+    
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
+    List<Product> findActiveProductsWithCategoryAndBrand();
+    
+    @Query("SELECT new com.example.project.dto.ProductSimpleResponse(" +
+           "p.id, p.name, p.description, p.sku, " +
+           "p.price, p.originalPrice, p.discountPercentage, " +
+           "p.isActive, p.isFeatured, p.isDigital, " +
+           "p.averageRating, p.reviewCount, p.viewCount, p.purchaseCount, " +
+           "p.createdAt, p.updatedAt, " +
+           "p.category.id, p.category.name, p.brand.id, p.brand.name) " +
+           "FROM Product p JOIN p.category JOIN p.brand WHERE p.isActive = true")
+    List<ProductSimpleResponse> findActiveProductsAsDTO();
+
+    long countByIsActiveTrue();
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
+    List<Product> findAllWithCategory();
+    
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
+    Page<Product> findActiveWithCategoryAndBrand(Pageable pageable);
 } 

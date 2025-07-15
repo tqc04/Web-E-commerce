@@ -8,6 +8,8 @@ import jakarta.validation.constraints.Size;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -56,21 +58,23 @@ public class Product {
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
+    @JsonIgnore
     private Category category;
     
     @NotNull
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "brand_id")
+    @JsonIgnore
     private Brand brand;
     
     @Column(name = "is_active")
-    private boolean isActive = true;
+    private Boolean isActive = true;
     
     @Column(name = "is_featured")
-    private boolean isFeatured = false;
+    private Boolean isFeatured = false;
     
     @Column(name = "is_digital")
-    private boolean isDigital = false;
+    private Boolean isDigital = false;
     
     // SEO fields
     @Column(name = "meta_title")
@@ -82,12 +86,14 @@ public class Product {
     @ElementCollection
     @CollectionTable(name = "product_tags", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "tag")
+    @JsonIgnore
     private Set<String> tags = new HashSet<>();
     
     // AI-related fields
     @ElementCollection
     @CollectionTable(name = "product_ai_tags", joinColumns = @JoinColumn(name = "product_id"))
     @Column(name = "ai_tag")
+    @JsonIgnore
     private Set<String> aiTags = new HashSet<>();
     
     @Column(name = "ai_content_score")
@@ -112,6 +118,10 @@ public class Product {
     @Column(name = "purchase_count")
     private Long purchaseCount = 0L;
     
+    // Stock quantity field for cart functionality
+    @Column(name = "stock_quantity")
+    private Integer stockQuantity = 100; // Default stock for demo
+    
     // Dimensions and weight
     @Column(name = "weight_kg")
     private Double weightKg;
@@ -135,18 +145,23 @@ public class Product {
     
     // Relationships
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ProductImage> images = new ArrayList<>();
     
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ProductVariant> variants = new ArrayList<>();
     
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ProductReview> reviews = new ArrayList<>();
     
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<InventoryItem> inventory = new ArrayList<>();
     
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<OrderItem> orderItems = new ArrayList<>();
     
     // Constructors
@@ -242,27 +257,27 @@ public class Product {
         this.brand = brand;
     }
     
-    public boolean isActive() {
+    public Boolean isActive() {
         return isActive;
     }
     
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         isActive = active;
     }
     
-    public boolean isFeatured() {
+    public Boolean isFeatured() {
         return isFeatured;
     }
     
-    public void setFeatured(boolean featured) {
+    public void setFeatured(Boolean featured) {
         isFeatured = featured;
     }
     
-    public boolean isDigital() {
+    public Boolean isDigital() {
         return isDigital;
     }
     
-    public void setDigital(boolean digital) {
+    public void setDigital(Boolean digital) {
         isDigital = digital;
     }
     
@@ -352,6 +367,14 @@ public class Product {
     
     public void setPurchaseCount(Long purchaseCount) {
         this.purchaseCount = purchaseCount;
+    }
+    
+    public Integer getStockQuantity() {
+        return stockQuantity;
+    }
+    
+    public void setStockQuantity(Integer stockQuantity) {
+        this.stockQuantity = stockQuantity;
     }
     
     public Double getWeightKg() {

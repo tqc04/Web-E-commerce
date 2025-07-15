@@ -54,8 +54,10 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { apiService, Product } from '../services/api'
 import notificationService from '../services/notificationService'
+import { useCart } from '../contexts/CartContext'
 
 const ProductsPage: React.FC = () => {
+  const { addToCart, cartLoading } = useCart()
   const [page, setPage] = useState(0)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('')
@@ -148,8 +150,17 @@ const ProductsPage: React.FC = () => {
   }
 
   // Handle add to cart
-  const handleAddToCart = (product: Product) => {
-    notificationService.success(`${product.name} added to cart!`)
+  const handleAddToCart = async (product: Product) => {
+    try {
+      const success = await addToCart(product.id, 1)
+      if (success) {
+        notificationService.success(`${product.name} added to cart!`)
+      } else {
+        notificationService.error('Failed to add product to cart')
+      }
+    } catch (error) {
+      notificationService.error('Failed to add product to cart')
+    }
   }
 
   // Handle share
@@ -550,7 +561,7 @@ const ProductsPage: React.FC = () => {
                     <CardMedia
                       component="img"
                       height={viewMode === 'list' ? "150" : "200"}
-                      image={product.imageUrl || '/api/placeholder/300/200'}
+                      image={product.imageUrl || 'https://images.unsplash.com/photo-1586953208448-b95a79798f07?w=300&h=200&fit=crop'}
                       alt={product.name}
                       sx={{ objectFit: 'cover' }}
                     />

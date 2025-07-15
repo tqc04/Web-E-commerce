@@ -10,6 +10,7 @@ import {
   Chip,
   TextField,
   Alert,
+  CircularProgress,
 } from '@mui/material'
 import {
   Add,
@@ -23,98 +24,91 @@ import {
   LocalShippingOutlined,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
-
-interface CartItem {
-  id: number
-  name: string
-  price: number
-  quantity: number
-  image: string
-  category: string
-  brand: string
-  stockQuantity: number
-}
+import { useCart } from '../contexts/CartContext'
+import notificationService from '../services/notificationService'
 
 const ShoppingCartPage: React.FC = () => {
   const navigate = useNavigate()
+  const { 
+    cart, 
+    cartLoading, 
+    updateCartItem, 
+    removeFromCart, 
+    clearCart,
+    applyPromoCode,
+    removePromoCode 
+  } = useCart()
   
-  // Mock cart items
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: 'Gaming Laptop Pro Max',
-      price: 1299.99,
-      quantity: 1,
-      image: '/api/placeholder/150/150',
-      category: 'Electronics',
-      brand: 'TechBrand',
-      stockQuantity: 15
-    },
-    {
-      id: 2,
-      name: 'Wireless Gaming Mouse Elite',
-      price: 79.99,
-      quantity: 2,
-      image: '/api/placeholder/150/150',
-      category: 'Gaming',
-      brand: 'GameMaster',
-      stockQuantity: 50
-    },
-    {
-      id: 3,
-      name: 'Premium Noise-Cancelling Headphones',
-      price: 199.99,
-      quantity: 1,
-      image: '/api/placeholder/150/150',
-      category: 'Audio',
-      brand: 'SoundWave',
-      stockQuantity: 30
-    }
-  ])
-
   const [promoCode, setPromoCode] = useState('')
-  const [appliedPromo, setAppliedPromo] = useState<string | null>(null)
-  const [promoDiscount, setPromoDiscount] = useState(0)
 
-  const updateQuantity = (id: number, newQuantity: number) => {
+  const updateQuantity = async (productId: number, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeItem(id)
+      await handleRemoveItem(productId)
       return
     }
     
-    setCartItems(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, quantity: Math.min(newQuantity, item.stockQuantity) }
-          : item
-      )
-    )
-  }
-
-  const removeItem = (id: number) => {
-    setCartItems(prev => prev.filter(item => item.id !== id))
-  }
-
-  const applyPromoCode = () => {
-    const validPromoCodes = {
-      'SAVE10': 10,
-      'WELCOME20': 20,
-      'STUDENT15': 15,
-      'TECH25': 25
-    }
-    
-    if (validPromoCodes[promoCode as keyof typeof validPromoCodes]) {
-      setAppliedPromo(promoCode)
-      setPromoDiscount(validPromoCodes[promoCode as keyof typeof validPromoCodes])
-      setPromoCode('')
-    } else {
-      alert('Invalid promo code. Try: SAVE10, WELCOME20, STUDENT15, or TECH25')
+    try {
+      const success = await updateCartItem(productId, newQuantity)
+      if (!success) {
+        notificationService.error('Failed to update cart item')
+      }
+    } catch (error) {
+      notificationService.error('Failed to update cart item')
     }
   }
 
-  const removePromoCode = () => {
-    setAppliedPromo(null)
-    setPromoDiscount(0)
+  const handleRemoveItem = async (productId: number) => {
+    try {
+      const success = await removeFromCart(productId)
+      if (success) {
+        notificationService.success('Product removed from cart')
+      } else {
+        notificationService.error('Failed to remove product from cart')
+      }
+    } catch (error) {
+      notificationService.error('Failed to remove product from cart')
+    }
+  }
+
+  const handleApplyPromoCode = async () => {
+    if (!promoCode.trim()) {
+      notificationService.error('Please enter a promo code')
+      return
+    }
+
+    try {
+      const success = await applyPromoCode(promoCode.toUpperCase())
+      if (success) {
+        setPromoCode('')
+        notificationService.success('Promo code applied successfully')
+      } else {
+        notificationService.error('Invalid promo code. Try: SAVE10, WELCOME20, STUDENT15, or TECH25')
+      }
+    } catch (error) {
+      notificationService.error('Failed to apply promo code')
+    }
+  }
+
+  const handleRemovePromoCode = async () => {
+    try {
+      const success = await removePromoCode()
+      if (success) {
+        notificationService.success('Promo code removed')
+      }
+    } catch (error) {
+      notificationService.error('Failed to remove promo code')
+    }
+  }
+
+  const handleClearCart = async () => {
+    try {
+      const success = await clearCart()
+      if (success) {
+        notificationService.success('Cart cleared')
+      }
+    } catch (error) {
+      notificationService.error('Failed to clear cart')
+    }
   }
 
   const formatPrice = (price: number) => {
@@ -124,22 +118,31 @@ const ShoppingCartPage: React.FC = () => {
     }).format(price)
   }
 
-  // Calculations
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0)
-  const discountAmount = (subtotal * promoDiscount) / 100
-  const shippingCost = subtotal > 50 ? 0 : 9.99
-  const tax = (subtotal - discountAmount) * 0.08 // 8% tax
-  const total = subtotal - discountAmount + shippingCost + tax
-
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-
   const handleCheckout = () => {
-    // Here you would typically integrate with a payment processor
-    console.log('Proceeding to checkout with:', { cartItems, total, appliedPromo })
-    alert(`Checkout functionality would be implemented here. Total: ${formatPrice(total)}`)
+    if (!cart || cart.items.length === 0) {
+      notificationService.error('Your cart is empty')
+      return
+    }
+    
+    // Navigate to checkout or implement checkout logic
+    console.log('Proceeding to checkout with:', cart)
+    navigate('/checkout')
   }
 
-  if (cartItems.length === 0) {
+  // Show loading state
+  if (cartLoading) {
+    return (
+      <Container maxWidth="lg" sx={{ py: 4, textAlign: 'center' }}>
+        <CircularProgress size={60} />
+        <Typography variant="h6" sx={{ mt: 2 }}>
+          Loading cart...
+        </Typography>
+      </Container>
+    )
+  }
+
+  // Show empty cart
+  if (!cart || cart.items.length === 0) {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box sx={{ textAlign: 'center', borderRadius: 3, p: 8 }}>
@@ -171,26 +174,28 @@ const ShoppingCartPage: React.FC = () => {
         <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
           Shopping Cart
         </Typography>
-        <Typography variant="body1" color="text.secondary">
-          <Chip label={totalItems} color="primary" sx={{ mr: 1 }} />
-          {totalItems} {totalItems === 1 ? 'item' : 'items'} in your cart
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Chip label={cart.totalItems} color="primary" size="small" />
+          <Typography variant="body1" color="text.secondary">
+            {cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'} in your cart
+          </Typography>
+        </Box>
       </Box>
 
       <Grid container spacing={4}>
         {/* Cart Items */}
         <Grid item xs={12} md={8}>
           <Box sx={{ borderRadius: 3, overflow: 'hidden' }}>
-            {cartItems.map((item, index) => (
-              <Box key={item.id}>
+            {cart.items.map((item, index) => (
+              <Box key={item.productId}>
                 <Box sx={{ p: 3 }}>
                   <Grid container spacing={3} alignItems="center">
                     {/* Product Image */}
                     <Grid item xs={12} sm={3}>
                       <Box
                         component="img"
-                        src={item.image}
-                        alt={item.name}
+                        src={item.productImage || '/api/placeholder/120/120'}
+                        alt={item.productName}
                         sx={{ 
                           width: '100%',
                           height: 120,
@@ -198,7 +203,7 @@ const ShoppingCartPage: React.FC = () => {
                           borderRadius: 2,
                           cursor: 'pointer'
                         }}
-                        onClick={() => navigate(`/products/${item.id}`)}
+                        onClick={() => navigate(`/products/${item.productId}`)}
                       />
                     </Grid>
 
@@ -211,31 +216,33 @@ const ShoppingCartPage: React.FC = () => {
                           cursor: 'pointer',
                           '&:hover': { color: 'primary.main' }
                         }}
-                        onClick={() => navigate(`/products/${item.id}`)}
+                        onClick={() => navigate(`/products/${item.productId}`)}
                       >
-                        {item.name}
+                        {item.productName}
                       </Typography>
                       
                       <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                        <Chip label={item.category} size="small" color="primary" variant="outlined" />
-                        <Chip label={item.brand} size="small" color="secondary" variant="outlined" />
+                        <Chip label={item.categoryName || 'General'} size="small" color="primary" variant="outlined" />
+                        <Chip label={item.brandName || 'Generic'} size="small" color="secondary" variant="outlined" />
                       </Box>
 
                       <Typography variant="h6" color="primary" fontWeight="bold" gutterBottom>
-                        {formatPrice(item.price)}
+                        {formatPrice(item.productPrice)}
                       </Typography>
 
-                      <Typography variant="body2" color="text.secondary">
-                        {item.stockQuantity < 10 && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        {item.stockQuantity && item.stockQuantity < 10 && (
                           <Chip 
                             label={`Only ${item.stockQuantity} left!`} 
                             size="small" 
                             color="warning" 
-                            sx={{ mr: 1 }}
+                            variant="filled"
                           />
                         )}
-                        In Stock: {item.stockQuantity}
-                      </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          In Stock: {item.stockQuantity || 'N/A'}
+                        </Typography>
+                      </Box>
                     </Grid>
 
                     {/* Quantity & Actions */}
@@ -245,8 +252,8 @@ const ShoppingCartPage: React.FC = () => {
                         <Box sx={{ display: 'flex', alignItems: 'center', border: '1px solid #ddd', borderRadius: 2 }}>
                           <IconButton 
                             size="small" 
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
+                            onClick={() => updateQuantity(item.productId, item.quantity - 1)}
+                            disabled={item.quantity <= 1 || cartLoading}
                           >
                             <Remove fontSize="small" />
                           </IconButton>
@@ -256,7 +263,7 @@ const ShoppingCartPage: React.FC = () => {
                             value={item.quantity}
                             onChange={(e) => {
                               const value = parseInt(e.target.value) || 1
-                              updateQuantity(item.id, value)
+                              updateQuantity(item.productId, value)
                             }}
                             inputProps={{
                               min: 1,
@@ -264,6 +271,7 @@ const ShoppingCartPage: React.FC = () => {
                               style: { textAlign: 'center', width: '40px' }
                             }}
                             variant="outlined"
+                            disabled={cartLoading}
                             sx={{
                               '& .MuiOutlinedInput-root': {
                                 '& fieldset': { border: 'none' },
@@ -273,8 +281,8 @@ const ShoppingCartPage: React.FC = () => {
                           
                           <IconButton 
                             size="small" 
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                            disabled={item.quantity >= item.stockQuantity}
+                            onClick={() => updateQuantity(item.productId, item.quantity + 1)}
+                            disabled={item.stockQuantity && item.quantity >= item.stockQuantity || cartLoading}
                           >
                             <Add fontSize="small" />
                           </IconButton>
@@ -282,7 +290,7 @@ const ShoppingCartPage: React.FC = () => {
 
                         {/* Item Total */}
                         <Typography variant="h6" fontWeight="bold">
-                          {formatPrice(item.price * item.quantity)}
+                          {formatPrice(item.subtotal)}
                         </Typography>
 
                         {/* Actions */}
@@ -294,7 +302,8 @@ const ShoppingCartPage: React.FC = () => {
                           <IconButton 
                             size="small" 
                             color="error"
-                            onClick={() => removeItem(item.id)}
+                            onClick={() => handleRemoveItem(item.productId)}
+                            disabled={cartLoading}
                           >
                             <Delete fontSize="small" />
                           </IconButton>
@@ -304,7 +313,7 @@ const ShoppingCartPage: React.FC = () => {
                   </Grid>
                 </Box>
                 
-                {index < cartItems.length - 1 && <Divider />}
+                {index < cart.items.length - 1 && <Divider />}
               </Box>
             ))}
           </Box>
@@ -334,12 +343,12 @@ const ShoppingCartPage: React.FC = () => {
               <Typography variant="body2" gutterBottom fontWeight="bold">
                 Promo Code
               </Typography>
-              {appliedPromo ? (
+              {cart.promoCode ? (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Chip
-                    label={`${appliedPromo} (-${promoDiscount}%)`}
+                    label={`${cart.promoCode} (Applied)`}
                     color="success"
-                    onDelete={removePromoCode}
+                    onDelete={handleRemovePromoCode}
                     icon={<ShareOutlined />}
                   />
                 </Box>
@@ -351,12 +360,13 @@ const ShoppingCartPage: React.FC = () => {
                     placeholder="Enter promo code"
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    disabled={cartLoading}
                     sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}
                   />
                   <Button
                     variant="outlined"
-                    onClick={applyPromoCode}
-                    disabled={!promoCode}
+                    onClick={handleApplyPromoCode}
+                    disabled={!promoCode || cartLoading}
                     sx={{ borderRadius: 2, minWidth: 'auto', px: 2 }}
                   >
                     Apply
@@ -370,17 +380,17 @@ const ShoppingCartPage: React.FC = () => {
             {/* Price Breakdown */}
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Subtotal ({totalItems} items)</Typography>
-                <Typography variant="body2">{formatPrice(subtotal)}</Typography>
+                <Typography variant="body2">Subtotal ({cart.totalItems} items)</Typography>
+                <Typography variant="body2">{formatPrice(cart.subtotal)}</Typography>
               </Box>
 
-              {appliedPromo && (
+              {cart.promoCode && cart.discountAmount > 0 && (
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography variant="body2" color="success.main">
-                    Discount ({appliedPromo})
+                    Discount ({cart.promoCode})
                   </Typography>
                   <Typography variant="body2" color="success.main">
-                    -{formatPrice(discountAmount)}
+                    -{formatPrice(cart.discountAmount)}
                   </Typography>
                 </Box>
               )}
@@ -388,18 +398,18 @@ const ShoppingCartPage: React.FC = () => {
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">
                   Shipping
-                  {subtotal > 50 && (
+                  {cart.shippingAmount === 0 && (
                     <Chip label="FREE" size="small" color="success" sx={{ ml: 1 }} />
                   )}
                 </Typography>
                 <Typography variant="body2">
-                  {shippingCost === 0 ? 'FREE' : formatPrice(shippingCost)}
+                  {cart.shippingAmount === 0 ? 'FREE' : formatPrice(cart.shippingAmount)}
                 </Typography>
               </Box>
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Tax</Typography>
-                <Typography variant="body2">{formatPrice(tax)}</Typography>
+                <Typography variant="body2">{formatPrice(cart.taxAmount)}</Typography>
               </Box>
             </Box>
 
@@ -411,18 +421,18 @@ const ShoppingCartPage: React.FC = () => {
                 Total
               </Typography>
               <Typography variant="h6" fontWeight="bold" color="primary">
-                {formatPrice(total)}
+                {formatPrice(cart.totalAmount)}
               </Typography>
             </Box>
 
-            {/* Shipping Alert */}
-            {subtotal < 50 && (
+            
+            {cart.subtotal < 50 && (
               <Alert 
                 severity="info" 
                 sx={{ mb: 3, borderRadius: 2 }}
                 icon={<LocalShippingOutlined />}
               >
-                Add {formatPrice(50 - subtotal)} more for FREE shipping!
+                Add {formatPrice(50 - cart.subtotal)} more for FREE shipping!
               </Alert>
             )}
 

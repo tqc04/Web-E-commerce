@@ -1,5 +1,6 @@
 package com.example.project.controller;
 
+import com.example.project.dto.UserDTO;
 import com.example.project.entity.User;
 import com.example.project.entity.UserBehavior;
 import com.example.project.service.UserService;
@@ -7,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -23,10 +25,14 @@ public class UserController {
      * Lấy thông tin người dùng
      */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
         try {
             Optional<User> user = userService.findById(id);
-            return user.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+            if (user.isPresent()) {
+                return ResponseEntity.ok(UserDTO.from(user.get()));
+            } else {
+                return ResponseEntity.notFound().build();
+            }
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -36,7 +42,7 @@ public class UserController {
      * Tạo người dùng mới
      */
     @PostMapping
-    public ResponseEntity<User> createUser(@RequestBody Map<String, String> userRequest) {
+    public ResponseEntity<UserDTO> createUser(@RequestBody Map<String, String> userRequest) {
         try {
             String username = userRequest.get("username");
             String email = userRequest.get("email");
@@ -45,34 +51,7 @@ public class UserController {
             String lastName = userRequest.get("lastName");
             
             User createdUser = userService.createUser(username, email, password, firstName, lastName);
-            return ResponseEntity.ok(createdUser);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Cập nhật thông tin người dùng
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(@PathVariable Long id, @RequestBody User user) {
-        try {
-            user.setId(id);
-            User updatedUser = userService.updateUser(user);
-            return ResponseEntity.ok(updatedUser);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Xóa người dùng
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
-        try {
-            userService.deleteUser(id);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(UserDTO.from(createdUser));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -82,10 +61,14 @@ public class UserController {
      * Tìm người dùng theo email
      */
     @GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) {
         try {
             Optional<User> user = userService.findByEmail(email);
-            return user.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+            if (user.isPresent()) {
+                return ResponseEntity.ok(UserDTO.from(user.get()));
+            } else {
+                return ResponseEntity.notFound().build();
+            }
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -95,64 +78,118 @@ public class UserController {
      * Tìm người dùng theo username
      */
     @GetMapping("/username/{username}")
-    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
+    public ResponseEntity<UserDTO> getUserByUsername(@PathVariable String username) {
         try {
             Optional<User> user = userService.findByUsername(username);
-            return user.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+            if (user.isPresent()) {
+                return ResponseEntity.ok(UserDTO.from(user.get()));
+            } else {
+                return ResponseEntity.notFound().build();
+            }
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }
 
     /**
-     * Lấy gợi ý sản phẩm cá nhân hóa
+     * Đăng nhập người dùng
      */
-    @GetMapping("/{id}/recommendations")
-    public ResponseEntity<List<UserService.PersonalizedRecommendation>> getPersonalizedRecommendations(@PathVariable Long id, @RequestParam(defaultValue = "10") int limit) {
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) {
         try {
-            List<UserService.PersonalizedRecommendation> recommendations = userService.getPersonalizedRecommendations(id, limit);
-            return ResponseEntity.ok(recommendations);
+            String username = loginRequest.get("username");
+            String password = loginRequest.get("password");
+            
+            if (username == null || password == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Username and password are required");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // Find user by username
+            Optional<User> userOpt = userService.findByUsername(username);
+            if (!userOpt.isPresent()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "User not found");
+                return ResponseEntity.notFound().build();
+            }
+            
+            User user = userOpt.get();
+            
+            // Simple password check (in real app, use password hashing)
+            if (!"password123".equals(password)) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Invalid password");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // Create response with token and user info using DTO
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", "jwt_token_" + user.getId() + "_" + System.currentTimeMillis());
+            response.put("user", UserDTO.from(user));
+            response.put("success", true);
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            e.printStackTrace();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Login failed: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 
     /**
-     * Cập nhật preferences người dùng
+     * Đăng ký người dùng mới
      */
-    @PostMapping("/{id}/preferences")
-    public ResponseEntity<Void> updateUserPreferences(@PathVariable Long id, @RequestBody List<String> preferences) {
+    @PostMapping("/register")
+    public ResponseEntity<Map<String, Object>> register(@RequestBody Map<String, String> registerRequest) {
         try {
-            userService.updateUserPreferences(id, preferences);
-            return ResponseEntity.ok().build();
+            String username = registerRequest.get("username");
+            String email = registerRequest.get("email");
+            String password = registerRequest.get("password");
+            String firstName = registerRequest.get("firstName");
+            String lastName = registerRequest.get("lastName");
+            
+            if (username == null || email == null || password == null) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Username, email and password are required");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            // Check if user already exists
+            if (userService.findByUsername(username).isPresent()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Username already exists");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            if (userService.findByEmail(email).isPresent()) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("error", "Email already exists");
+                return ResponseEntity.badRequest().body(errorResponse);
+            }
+            
+            User createdUser = userService.createUser(username, email, password, firstName, lastName);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("user", UserDTO.from(createdUser));
+            response.put("success", true);
+            response.put("message", "User created successfully");
+            
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            e.printStackTrace();
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Registration failed: " + e.getMessage());
+            return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
 
     /**
-     * Phân tích hành vi người dùng
+     * Health check endpoint
      */
-    @PostMapping("/{id}/behavior")
-    public ResponseEntity<Void> analyzeUserBehavior(@PathVariable Long id, @RequestBody UserBehavior behavior) {
-        try {
-            userService.analyzeUserBehavior(id, behavior);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Lấy thông tin chi tiết người dùng
-     */
-    @GetMapping("/{id}/insights")
-    public ResponseEntity<UserService.UserInsights> getUserInsights(@PathVariable Long id) {
-        try {
-            UserService.UserInsights insights = userService.getUserInsights(id);
-            return ResponseEntity.ok(insights);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        return ResponseEntity.ok("Users API is working!");
     }
 } 

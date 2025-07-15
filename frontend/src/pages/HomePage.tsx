@@ -35,12 +35,12 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate()
 
   const categories = [
-    { name: 'Electronics', image: '/api/placeholder/200/150', count: '2,345+', color: '#1976d2' },
-    { name: 'Gaming', image: '/api/placeholder/200/150', count: '1,876+', color: '#9c27b0' },
-    { name: 'Computers', image: '/api/placeholder/200/150', count: '3,421+', color: '#f57c00' },
-    { name: 'Mobile', image: '/api/placeholder/200/150', count: '4,567+', color: '#388e3c' },
-    { name: 'Audio', image: '/api/placeholder/200/150', count: '1,234+', color: '#d32f2f' },
-    { name: 'Accessories', image: '/api/placeholder/200/150', count: '987+', color: '#7b1fa2' },
+    { name: 'Electronics', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?w=200&h=150&fit=crop', count: '2,345+', color: '#1976d2' },
+    { name: 'Gaming', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&h=150&fit=crop', count: '1,876+', color: '#9c27b0' },
+    { name: 'Computers', image: 'https://images.unsplash.com/photo-1587831990711-23ca6441447b?w=200&h=150&fit=crop', count: '3,421+', color: '#f57c00' },
+    { name: 'Mobile', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=200&h=150&fit=crop', count: '4,567+', color: '#388e3c' },
+    { name: 'Audio', image: 'https://images.unsplash.com/photo-1583394838336-acd977736f90?w=200&h=150&fit=crop', count: '1,234+', color: '#d32f2f' },
+    { name: 'Accessories', image: 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=200&h=150&fit=crop', count: '987+', color: '#7b1fa2' },
   ]
 
   const featuredProducts = [
@@ -49,7 +49,7 @@ const HomePage: React.FC = () => {
       name: 'Gaming Laptop Pro',
       price: 1299.99,
       originalPrice: 1599.99,
-      image: '/api/placeholder/300/250',
+      image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=300&h=250&fit=crop',
       rating: 4.8,
       reviews: 245,
       badge: 'Best Seller'
@@ -59,7 +59,7 @@ const HomePage: React.FC = () => {
       name: 'Wireless Gaming Mouse',
       price: 79.99,
       originalPrice: 99.99,
-      image: '/api/placeholder/300/250',
+      image: 'https://images.unsplash.com/photo-1527864550417-7fd91fc51a46?w=300&h=250&fit=crop',
       rating: 4.6,
       reviews: 189,
       badge: 'New'
@@ -69,7 +69,7 @@ const HomePage: React.FC = () => {
       name: 'Premium Headphones',
       price: 199.99,
       originalPrice: 249.99,
-      image: '/api/placeholder/300/250',
+      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=250&fit=crop',
       rating: 4.9,
       reviews: 432,
       badge: '20% OFF'
@@ -79,7 +79,7 @@ const HomePage: React.FC = () => {
       name: 'Smart Fitness Watch',
       price: 299.99,
       originalPrice: 399.99,
-      image: '/api/placeholder/300/250',
+      image: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=300&h=250&fit=crop',
       rating: 4.7,
       reviews: 321,
       badge: 'Featured'
@@ -89,21 +89,21 @@ const HomePage: React.FC = () => {
   const testimonials = [
     {
       name: 'Sarah Johnson',
-      avatar: '/api/placeholder/60/60',
+      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b647?w=60&h=60&fit=crop&crop=face',
       rating: 5,
       comment: 'Amazing shopping experience! Fast delivery and excellent customer service.',
       location: 'New York, USA'
     },
     {
       name: 'Michael Chen',
-      avatar: '/api/placeholder/60/60',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=60&h=60&fit=crop&crop=face',
       rating: 5,
       comment: 'The AI recommendations are spot on. Found exactly what I was looking for!',
       location: 'San Francisco, USA'
     },
     {
       name: 'Emma Wilson',
-      avatar: '/api/placeholder/60/60',
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=60&h=60&fit=crop&crop=face',
       rating: 5,
       comment: 'Love the chatbot feature. It helped me choose the perfect laptop.',
       location: 'London, UK'
@@ -138,17 +138,6 @@ const HomePage: React.FC = () => {
           py: { xs: 8, md: 12 },
           position: 'relative',
           overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'url(/api/placeholder/1920/1080) center/cover',
-            opacity: 0.1,
-            zIndex: 0,
-          }
         }}
       >
         <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
@@ -268,7 +257,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <img
-                  src="/api/placeholder/500/400"
+                  src="/images/home.png"
                   alt="Shopping Experience"
                   style={{
                     width: '100%',

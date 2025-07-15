@@ -18,7 +18,7 @@ public class EventPublisher {
     
     private static final Logger logger = LoggerFactory.getLogger(EventPublisher.class);
     
-    @Autowired
+    @Autowired(required = false)
     private KafkaTemplate<String, String> kafkaTemplate;
     
     @Autowired
@@ -34,6 +34,10 @@ public class EventPublisher {
      * Publish user behavior event
      */
     public void publishUserBehaviorEvent(UserBehaviorEvent event) {
+        if (kafkaTemplate == null) {
+            logger.debug("Kafka is disabled, skipping event publication: {}", event.getEventType());
+            return;
+        }
         try {
             String eventJson = objectMapper.writeValueAsString(event);
             kafkaTemplate.send(USER_BEHAVIOR_TOPIC, event.getUserId().toString(), eventJson);
@@ -231,6 +235,10 @@ public class EventPublisher {
      * Publish generic event
      */
     public void publishGenericEvent(String topic, String key, Object eventData) {
+        if (kafkaTemplate == null) {
+            logger.debug("Kafka is disabled, skipping event publication to topic: {}", topic);
+            return;
+        }
         try {
             String eventJson = objectMapper.writeValueAsString(eventData);
             kafkaTemplate.send(topic, key, eventJson);

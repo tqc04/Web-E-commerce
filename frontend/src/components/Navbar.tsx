@@ -46,9 +46,11 @@ import {
   Support,
   TrendingUp,
   Close,
+  ContactSupport,
 } from '@mui/icons-material'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
 
 const Navbar: React.FC = () => {
   const location = useLocation()
@@ -56,13 +58,14 @@ const Navbar: React.FC = () => {
   const theme = useTheme()
   const isMobile = useMediaQuery(theme.breakpoints.down('md'))
   const { isAuthenticated, isAdmin, user, logout } = useAuth()
+  const { getCartCount } = useCart()
   
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [categoriesOpen, setCategoriesOpen] = useState(false)
   const [categoriesAnchorEl, setCategoriesAnchorEl] = useState<null | HTMLElement>(null)
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
-  const [cartCount] = useState(3) // Mock cart count
+  const cartCount = getCartCount() // Use real cart count from context
   const [favoriteCount] = useState(2) // Mock favorite count
   const [notificationCount] = useState(1) // Mock notification count
 
@@ -115,6 +118,9 @@ const Navbar: React.FC = () => {
   const mobileNavItems = [
     { label: 'Home', path: '/', icon: <Home />, public: true },
     { label: 'Products', path: '/products', icon: <Store />, public: true },
+    { label: 'Support', path: '/support', icon: <Support />, public: true },
+    { label: 'Favorites', path: '/favorites', icon: <Favorite />, public: false },
+    { label: 'Profile', path: '/profile', icon: <AccountCircle />, public: false },
     { label: 'Chat Assistant', path: '/chatbot', icon: <Chat />, public: false },
     { label: 'My Orders', path: '/orders', icon: <Receipt />, public: false },
     { label: 'Admin Panel', path: '/admin', icon: <AdminPanelSettings />, public: false, adminOnly: true },
@@ -315,6 +321,21 @@ const Navbar: React.FC = () => {
                   }}
                 >
                   Products
+                </Button>
+                <Button
+                  component={Link}
+                  to="/support"
+                  color="inherit"
+                  sx={{
+                    textTransform: 'none',
+                    borderRadius: 2,
+                    backgroundColor: isActive('/support') ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    },
+                  }}
+                >
+                  Support
                 </Button>
                 {isAuthenticated && (
                   <>
