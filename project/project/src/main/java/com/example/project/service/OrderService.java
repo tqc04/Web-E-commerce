@@ -1,12 +1,9 @@
 package com.example.project.service;
 
-import com.example.project.entity.Order;
-import com.example.project.entity.OrderItem;
-import com.example.project.entity.Product;
-import com.example.project.entity.User;
-import com.example.project.entity.OrderStatus;
-import com.example.project.entity.RiskLevel;
+import com.example.project.entity.*;
+
 import com.example.project.repository.OrderRepository;
+import com.example.project.repository.OrderStatusHistoryRepository;
 import com.example.project.repository.UserRepository;
 import com.example.project.repository.ProductRepository;
 import com.example.project.service.ai.AIService;
@@ -26,6 +23,9 @@ public class OrderService {
     
     @Autowired
     private OrderRepository orderRepository;
+    
+    @Autowired
+    private OrderStatusHistoryRepository statusHistoryRepository;
     
     @Autowired
     private UserRepository userRepository;
@@ -57,7 +57,7 @@ public class OrderService {
         order.setShippingAddress(shippingAddress);
         order.setBillingAddress(billingAddress);
         order.setPaymentMethod(paymentMethod);
-        order.setStatus(OrderStatus.PENDING);
+        order.setStatus(OrderStatus.PENDING); // Start with PENDING
         
         // Add order items
         BigDecimal subtotal = BigDecimal.ZERO;
@@ -79,7 +79,17 @@ public class OrderService {
         }
         
         order.setSubtotal(subtotal);
-        order.setTotalAmount(subtotal); // Simplified - in real app would add taxes, shipping, etc.
+        
+        // Calculate tax and shipping
+        BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.1)); // 10% tax
+        BigDecimal shippingAmount = BigDecimal.valueOf(25.00); // Fixed shipping fee
+        if (subtotal.compareTo(BigDecimal.valueOf(500)) >= 0) {
+            shippingAmount = BigDecimal.ZERO; // Free shipping over $500
+        }
+        
+        order.setTaxAmount(taxAmount);
+        order.setShippingAmount(shippingAmount);
+        order.setTotalAmount(subtotal.add(taxAmount).add(shippingAmount));
         
         // AI Fraud Detection
         FraudAnalysis fraudAnalysis = analyzeOrderForFraud(order, user, ipAddress, userAgent);
@@ -91,12 +101,179 @@ public class OrderService {
         // Save order
         Order savedOrder = orderRepository.save(order);
         
-        // If high risk, flag for manual review
-        if (fraudAnalysis.getRiskLevel() == RiskLevel.HIGH || fraudAnalysis.getRiskLevel() == RiskLevel.CRITICAL) {
-            flagOrderForReview(savedOrder, "High fraud risk detected");
+        // Create initial status history
+        createStatusHistory(savedOrder, null, OrderStatus.PENDING, "System", "Order created", ipAddress, userAgent, true);
+        
+        // Auto-approve low risk orders, require manual approval for others
+        if (fraudAnalysis.getRiskLevel() == RiskLevel.LOW && fraudAnalysis.getFraudScore() < 0.3) {
+            // Auto approve low risk orders
+            updateOrderStatus(savedOrder.getId(), OrderStatus.PENDING_APPROVAL, "System auto-progression", "System", ipAddress, userAgent);
+        } else {
+            // Flag for manual review
+            flagOrderForReview(savedOrder, "High fraud risk detected - requires manual approval");
         }
         
         return savedOrder;
+    }
+    
+    /**
+     * Admin approve order
+     */
+    public void approveOrder(Long orderId, String adminUser, String notes, String ipAddress, String userAgent) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new OrderNotFoundException("Order not found with id: " + orderId);
+        }
+        
+        Order order = orderOpt.get();
+        
+        if (order.getStatus() != OrderStatus.PENDING && order.getStatus() != OrderStatus.PENDING_APPROVAL) {
+            throw new IllegalStateException("Order cannot be approved in current status: " + order.getStatus());
+        }
+        
+        updateOrderStatus(orderId, OrderStatus.APPROVED, notes != null ? notes : "Order approved by admin", adminUser, ipAddress, userAgent);
+        
+        // Auto-progress to CONFIRMED after approval
+        updateOrderStatus(orderId, OrderStatus.CONFIRMED, "Payment confirmed", "System", ipAddress, userAgent);
+    }
+    
+    /**
+     * Reject order
+     */
+    public void rejectOrder(Long orderId, String adminUser, String reason, String ipAddress, String userAgent) {
+        updateOrderStatus(orderId, OrderStatus.CANCELLED, reason, adminUser, ipAddress, userAgent);
+    }
+    
+    /**
+     * Update order status with proper tracking
+     */
+    public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason, String changedBy, String ipAddress, String userAgent) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new OrderNotFoundException("Order not found with id: " + orderId);
+        }
+        
+        Order order = orderOpt.get();
+        OrderStatus oldStatus = order.getStatus();
+        
+        if (oldStatus == newStatus) {
+            return; // No change needed
+        }
+        
+        // Validate status transitions
+        if (!isValidStatusTransition(oldStatus, newStatus)) {
+            throw new IllegalStateException("Invalid status transition from " + oldStatus + " to " + newStatus);
+        }
+        
+        order.setStatus(newStatus);
+        
+        // Set specific timestamps for certain statuses
+        LocalDateTime now = LocalDateTime.now();
+        switch (newStatus) {
+            case CANCELLED:
+                order.setCancelledDate(now);
+                if (reason != null) {
+                    order.setCancellationReason(reason);
+                }
+                break;
+            case DELIVERED:
+                order.setDeliveredDate(now);
+                break;
+            case SHIPPED:
+                // Could set shipped date here if we had that field
+                break;
+        }
+        
+        orderRepository.save(order);
+        
+        // Create status history
+        createStatusHistory(order, oldStatus, newStatus, changedBy, reason, ipAddress, userAgent, false);
+        
+        // Send notifications (could be implemented)
+        // notificationService.sendOrderStatusUpdate(order, oldStatus, newStatus);
+    }
+    
+    /**
+     * Create status history record
+     */
+    private void createStatusHistory(Order order, OrderStatus fromStatus, OrderStatus toStatus, 
+                                   String changedBy, String notes, String ipAddress, String userAgent, boolean systemGenerated) {
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.setOrder(order);
+        history.setFromStatus(fromStatus);
+        history.setToStatus(toStatus);
+        history.setChangedBy(changedBy);
+        history.setNotes(notes);
+        history.setIpAddress(ipAddress);
+        history.setUserAgent(userAgent);
+        history.setSystemGenerated(systemGenerated);
+        
+        statusHistoryRepository.save(history);
+    }
+    
+    /**
+     * Validate status transitions
+     */
+    private boolean isValidStatusTransition(OrderStatus from, OrderStatus to) {
+        // Define valid transitions
+        Map<OrderStatus, Set<OrderStatus>> validTransitions = Map.of(
+            OrderStatus.PENDING, Set.of(OrderStatus.PENDING_APPROVAL, OrderStatus.CANCELLED),
+            OrderStatus.PENDING_APPROVAL, Set.of(OrderStatus.APPROVED, OrderStatus.CANCELLED),
+            OrderStatus.APPROVED, Set.of(OrderStatus.CONFIRMED, OrderStatus.CANCELLED),
+            OrderStatus.CONFIRMED, Set.of(OrderStatus.PROCESSING, OrderStatus.CANCELLED),
+            OrderStatus.PROCESSING, Set.of(OrderStatus.SHIPPED, OrderStatus.CANCELLED),
+            OrderStatus.SHIPPED, Set.of(OrderStatus.DELIVERED, OrderStatus.CANCELLED),
+            OrderStatus.DELIVERED, Set.of(OrderStatus.COMPLETED),
+            OrderStatus.COMPLETED, Set.of(OrderStatus.REFUNDED),
+            OrderStatus.CANCELLED, Set.of(), // No transitions from cancelled
+            OrderStatus.REFUNDED, Set.of()   // No transitions from refunded
+        );
+        
+        return validTransitions.getOrDefault(from, Set.of()).contains(to);
+    }
+    
+    /**
+     * Cancel order with proper validation
+     */
+    public void cancelOrder(Long orderId, String reason, String cancelledBy, String ipAddress, String userAgent) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new OrderNotFoundException("Order not found with id: " + orderId);
+        }
+        
+        Order order = orderOpt.get();
+        
+        // Check if order can be cancelled
+        if (!canCancelOrder(order)) {
+            throw new IllegalStateException("Order cannot be cancelled in current status: " + order.getStatus());
+        }
+        
+        updateOrderStatus(orderId, OrderStatus.CANCELLED, reason, cancelledBy, ipAddress, userAgent);
+    }
+    
+    /**
+     * Check if order can be cancelled
+     */
+    public boolean canCancelOrder(Order order) {
+        return order.getStatus() == OrderStatus.PENDING || 
+               order.getStatus() == OrderStatus.PENDING_APPROVAL ||
+               order.getStatus() == OrderStatus.APPROVED ||
+               order.getStatus() == OrderStatus.CONFIRMED ||
+               order.getStatus() == OrderStatus.PROCESSING;
+    }
+    
+    /**
+     * Get orders requiring admin approval
+     */
+    public Page<Order> getOrdersForApproval(Pageable pageable) {
+        return orderRepository.findByStatus(OrderStatus.PENDING_APPROVAL, pageable);
+    }
+    
+    /**
+     * Get order status history
+     */
+    public List<OrderStatusHistory> getOrderHistory(Long orderId) {
+        return statusHistoryRepository.findByOrderIdOrderByCreatedAtDesc(orderId);
     }
     
     /**
@@ -264,48 +441,6 @@ public class OrderService {
     /**
      * Update order status with AI insights
      */
-    public void updateOrderStatus(Long orderId, OrderStatus newStatus, String reason) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
-        if (orderOpt.isEmpty()) {
-            throw new OrderNotFoundException("Order not found with id: " + orderId);
-        }
-        
-        Order order = orderOpt.get();
-        OrderStatus oldStatus = order.getStatus();
-        order.setStatus(newStatus);
-        
-        // Add AI insights for status change
-        try {
-            String prompt = """
-                Generate a brief customer notification message for this order status change:
-                
-                Order: {orderNumber}
-                Status Change: {oldStatus} → {newStatus}
-                Reason: {reason}
-                
-                Create a friendly, informative message for the customer (max 200 characters).
-                """;
-            
-            Map<String, Object> variables = Map.of(
-                    "orderNumber", order.getOrderNumber(),
-                    "oldStatus", oldStatus.toString(),
-                    "newStatus", newStatus.toString(),
-                    "reason", reason != null ? reason : "Status update"
-            );
-            
-            String customerMessage = aiService.generateText(prompt, variables);
-            order.setNotes(customerMessage);
-            
-        } catch (Exception e) {
-            System.err.println("Failed to generate status update message: " + e.getMessage());
-        }
-        
-        orderRepository.save(order);
-    }
-    
-    /**
-     * Generate order insights using AI
-     */
     public OrderInsights getOrderInsights(Long orderId) {
         Optional<Order> orderOpt = orderRepository.findById(orderId);
         if (orderOpt.isEmpty()) {
@@ -401,20 +536,31 @@ public class OrderService {
     }
     
     /**
-     * Cancel order
+     * Get all orders with pagination
      */
-    public void cancelOrder(Long orderId, String reason) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
-        if (orderOpt.isEmpty()) {
-            throw new OrderNotFoundException("Order not found with id: " + orderId);
-        }
-        
-        Order order = orderOpt.get();
-        order.setStatus(OrderStatus.CANCELLED);
-        order.setCancellationReason(reason);
-        order.setCancelledDate(LocalDateTime.now());
-        
-        orderRepository.save(order);
+    public Page<Order> getAllOrders(Pageable pageable) {
+        return orderRepository.findAll(pageable);
+    }
+    
+    /**
+     * Count orders by status
+     */
+    public long countOrdersByStatus(OrderStatus status) {
+        return orderRepository.countByStatus(status);
+    }
+    
+    /**
+     * Count flagged orders
+     */
+    public long countFlaggedOrders() {
+        return orderRepository.countFlaggedOrders();
+    }
+    
+    /**
+     * Count all orders
+     */
+    public long countAllOrders() {
+        return orderRepository.count();
     }
     
     // Inner classes

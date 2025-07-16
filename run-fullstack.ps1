@@ -1,158 +1,198 @@
 #!/usr/bin/env pwsh
 
-# 🚀 AI E-commerce Platform - Full Stack Runner
-# This script runs both React frontend and Spring Boot backend
+# Full Stack E-commerce Application Startup Script
+# This script starts both the Spring Boot backend and React frontend
 
-Write-Host "🎯 AI E-commerce Platform - Full Stack Development" -ForegroundColor Green
-Write-Host "🎨 Frontend: React + Vite + Material-UI" -ForegroundColor Cyan
-Write-Host "🖥️ Backend: Spring Boot + MySQL + OpenAI" -ForegroundColor Blue
+Write-Host "🚀 Starting Full Stack E-commerce Application..." -ForegroundColor Green
 Write-Host ""
 
-# Check dependencies
-Write-Host "🔍 Checking dependencies..." -ForegroundColor Yellow
-
-# Check Node.js
-if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Node.js is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "Please install Node.js 16+ first: https://nodejs.org/" -ForegroundColor Yellow
+# Check if Java is installed
+try {
+    $javaVersion = java -version 2>&1 | Select-String "version"
+    Write-Host "✅ Java found: $javaVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Java not found. Please install Java 17 or higher." -ForegroundColor Red
     exit 1
 }
 
-# Check Java
-if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Java is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "Please install Java 17+ first" -ForegroundColor Yellow
+# Check if Node.js is installed
+try {
+    $nodeVersion = node --version
+    Write-Host "✅ Node.js found: $nodeVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ Node.js not found. Please install Node.js 16 or higher." -ForegroundColor Red
     exit 1
 }
 
-# Check Maven
-if (-not (Get-Command mvn -ErrorAction SilentlyContinue)) {
-    Write-Host "❌ Maven is not installed or not in PATH" -ForegroundColor Red
-    Write-Host "Please install Maven first: https://maven.apache.org/" -ForegroundColor Yellow
+# Check if npm is installed
+try {
+    $npmVersion = npm --version
+    Write-Host "✅ npm found: $npmVersion" -ForegroundColor Green
+} catch {
+    Write-Host "❌ npm not found. Please install npm." -ForegroundColor Red
     exit 1
 }
 
-$nodeVersion = node --version
-$javaVersion = java -version 2>&1 | Select-Object -First 1
-Write-Host "✅ Node.js: $nodeVersion" -ForegroundColor Green
-Write-Host "✅ Java: $javaVersion" -ForegroundColor Green
+Write-Host ""
+Write-Host "📋 Prerequisites check completed successfully!" -ForegroundColor Green
 Write-Host ""
 
-# Check if ports are available
-$frontendPort = 3000
-$backendPort = 8081
-
-$frontendInUse = netstat -an | findstr ":$frontendPort"
-$backendInUse = netstat -an | findstr ":$backendPort"
-
-if ($frontendInUse) {
-    Write-Host "⚠️ Port $frontendPort is already in use (Frontend)" -ForegroundColor Yellow
-    Write-Host "Please stop the service using port $frontendPort or choose a different port" -ForegroundColor Yellow
+# Function to start backend
+function Start-Backend {
+    Write-Host "🔧 Starting Spring Boot Backend..." -ForegroundColor Yellow
+    Write-Host "   Backend will be available at: http://localhost:8080" -ForegroundColor Cyan
+    Write-Host "   API Documentation: http://localhost:8080/swagger-ui.html" -ForegroundColor Cyan
     Write-Host ""
+    
+    Set-Location "project/project"
+    
+    # Check if Maven wrapper exists
+    if (Test-Path "mvnw.cmd") {
+        Write-Host "   Using Maven wrapper..." -ForegroundColor Gray
+        Start-Process -FilePath ".\mvnw.cmd" -ArgumentList "spring-boot:run" -NoNewWindow
+    } else {
+        Write-Host "   Using system Maven..." -ForegroundColor Gray
+        Start-Process -FilePath "mvn" -ArgumentList "spring-boot:run" -NoNewWindow
+    }
+    
+    Set-Location "../.."
 }
 
-if ($backendInUse) {
-    Write-Host "⚠️ Port $backendPort is already in use (Backend)" -ForegroundColor Yellow
-    Write-Host "Please stop the service using port $backendPort" -ForegroundColor Yellow
+# Function to start frontend
+function Start-Frontend {
+    Write-Host "🎨 Starting React Frontend..." -ForegroundColor Yellow
+    Write-Host "   Frontend will be available at: http://localhost:5173" -ForegroundColor Cyan
     Write-Host ""
+    
+    Set-Location "frontend"
+    
+    # Install dependencies if node_modules doesn't exist
+    if (-not (Test-Path "node_modules")) {
+        Write-Host "   Installing frontend dependencies..." -ForegroundColor Gray
+        npm install
+    }
+    
+    # Start development server
+    Write-Host "   Starting development server..." -ForegroundColor Gray
+    Start-Process -FilePath "npm" -ArgumentList "run", "dev" -NoNewWindow
+    
+    Set-Location ".."
 }
 
-# Install frontend dependencies if needed
-Write-Host "📦 Checking frontend dependencies..." -ForegroundColor Yellow
-if (-not (Test-Path "frontend/node_modules")) {
-    Write-Host "Installing frontend dependencies..." -ForegroundColor Blue
-    Set-Location frontend
-    npm install
-    Set-Location ..
-    Write-Host "✅ Frontend dependencies installed" -ForegroundColor Green
-} else {
-    Write-Host "✅ Frontend dependencies already installed" -ForegroundColor Green
-}
-
-# Build backend if needed
-Write-Host "🔨 Checking backend build..." -ForegroundColor Yellow
-if (-not (Test-Path "project/project/target/project-0.0.1-SNAPSHOT.jar")) {
-    Write-Host "Building backend..." -ForegroundColor Blue
-    Set-Location project/project
-    mvn clean package -DskipTests -q
-    Set-Location ../..
-    Write-Host "✅ Backend built successfully" -ForegroundColor Green
-} else {
-    Write-Host "✅ Backend already built" -ForegroundColor Green
-}
-
-Write-Host ""
-Write-Host "🚀 Starting Full Stack Application..." -ForegroundColor Green
-Write-Host ""
-
-# Create run commands
-$frontendCommand = "cd frontend && npm run dev"
-$backendCommand = "cd project/project && mvn spring-boot:run"
-
-Write-Host "📋 Manual Instructions (if needed):" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "Terminal 1 (Backend):" -ForegroundColor Blue
-Write-Host "  cd project/project" -ForegroundColor Gray
-Write-Host "  mvn spring-boot:run" -ForegroundColor Gray
-Write-Host "  🌐 Backend URL: http://localhost:8081" -ForegroundColor Green
-Write-Host ""
-Write-Host "Terminal 2 (Frontend):" -ForegroundColor Cyan
-Write-Host "  cd frontend" -ForegroundColor Gray
-Write-Host "  npm run dev" -ForegroundColor Gray
-Write-Host "  🌐 Frontend URL: http://localhost:3000" -ForegroundColor Green
-Write-Host "  📡 API Proxy: Automatically proxies to backend" -ForegroundColor Yellow
-Write-Host ""
-
-# Option to run automatically
-Write-Host "🎯 Auto-start options:" -ForegroundColor Yellow
-Write-Host "1. Start Backend only" -ForegroundColor White
-Write-Host "2. Start Frontend only" -ForegroundColor White
-Write-Host "3. Show instructions only (current)" -ForegroundColor White
-Write-Host "4. Exit" -ForegroundColor White
-Write-Host ""
-
-$choice = Read-Host "Choose option (1-4)"
-
-switch ($choice) {
-    "1" {
-        Write-Host "🚀 Starting Backend (Spring Boot)..." -ForegroundColor Blue
-        Write-Host "Access at: http://localhost:8081" -ForegroundColor Green
-        Write-Host "Health check: http://localhost:8081/actuator/health" -ForegroundColor Yellow
+# Function to wait for services to start
+function Wait-ForServices {
+    Write-Host ""
+    Write-Host "⏳ Waiting for services to start..." -ForegroundColor Yellow
+    
+    $backendReady = $false
+    $frontendReady = $false
+    $attempts = 0
+    $maxAttempts = 30
+    
+    while (-not ($backendReady -and $frontendReady) -and $attempts -lt $maxAttempts) {
+        $attempts++
+        Write-Host "   Attempt $attempts/$maxAttempts..." -ForegroundColor Gray
+        
+        # Check backend
+        if (-not $backendReady) {
+            try {
+                $response = Invoke-WebRequest -Uri "http://localhost:8080/actuator/health" -TimeoutSec 5 -ErrorAction SilentlyContinue
+                if ($response.StatusCode -eq 200) {
+                    $backendReady = $true
+                    Write-Host "   ✅ Backend is ready!" -ForegroundColor Green
+                }
+            } catch {
+                # Backend not ready yet
+            }
+        }
+        
+        # Check frontend
+        if (-not $frontendReady) {
+            try {
+                $response = Invoke-WebRequest -Uri "http://localhost:5173" -TimeoutSec 5 -ErrorAction SilentlyContinue
+                if ($response.StatusCode -eq 200) {
+                    $frontendReady = $true
+                    Write-Host "   ✅ Frontend is ready!" -ForegroundColor Green
+                }
+            } catch {
+                # Frontend not ready yet
+            }
+        }
+        
+        if (-not ($backendReady -and $frontendReady)) {
+            Start-Sleep -Seconds 2
+        }
+    }
+    
+    if ($backendReady -and $frontendReady) {
         Write-Host ""
-        Set-Location project/project
-        mvn spring-boot:run
-    }
-    "2" {
-        Write-Host "🚀 Starting Frontend (React + Vite)..." -ForegroundColor Cyan
-        Write-Host "Access at: http://localhost:3000" -ForegroundColor Green
-        Write-Host "Note: Backend must be running on port 8081 for API calls" -ForegroundColor Yellow
+        Write-Host "🎉 All services are running successfully!" -ForegroundColor Green
         Write-Host ""
-        Set-Location frontend
-        npm run dev
-    }
-    "3" {
-        Write-Host "📋 Instructions displayed above. Run manually in separate terminals." -ForegroundColor Yellow
-    }
-    "4" {
-        Write-Host "👋 Goodbye!" -ForegroundColor Green
-        exit 0
-    }
-    default {
-        Write-Host "📋 Invalid choice. Showing instructions only." -ForegroundColor Yellow
+        Write-Host "📱 Application URLs:" -ForegroundColor Cyan
+        Write-Host "   Frontend: http://localhost:5173" -ForegroundColor White
+        Write-Host "   Backend API: http://localhost:8080" -ForegroundColor White
+        Write-Host "   API Docs: http://localhost:8080/swagger-ui.html" -ForegroundColor White
+        Write-Host "   Database: http://localhost:8080/h2-console" -ForegroundColor White
+        Write-Host ""
+        Write-Host "🔑 Default Admin Credentials:" -ForegroundColor Cyan
+        Write-Host "   Email: admin@example.com" -ForegroundColor White
+        Write-Host "   Password: admin123" -ForegroundColor White
+        Write-Host ""
+        Write-Host "👤 Default User Credentials:" -ForegroundColor Cyan
+        Write-Host "   Email: user@example.com" -ForegroundColor White
+        Write-Host "   Password: user123" -ForegroundColor White
+        Write-Host ""
+        Write-Host "💡 Tips:" -ForegroundColor Yellow
+        Write-Host "   - Press Ctrl+C to stop all services" -ForegroundColor Gray
+        Write-Host "   - Check the console for any error messages" -ForegroundColor Gray
+        Write-Host "   - Use the admin panel to manage products and users" -ForegroundColor Gray
+        Write-Host ""
+    } else {
+        Write-Host ""
+        Write-Host "⚠️  Some services may not have started properly." -ForegroundColor Yellow
+        Write-Host "   Please check the console output for any error messages." -ForegroundColor Gray
+        Write-Host ""
     }
 }
 
-Write-Host ""
-Write-Host "🎉 Development URLs:" -ForegroundColor Green
-Write-Host "  🖥️ Backend API: http://localhost:8081" -ForegroundColor Blue
-Write-Host "  🎨 Frontend App: http://localhost:3000" -ForegroundColor Cyan
-Write-Host "  💚 Health Check: http://localhost:8081/actuator/health" -ForegroundColor Green
-Write-Host ""
-Write-Host "📚 Features Available:" -ForegroundColor Yellow
-Write-Host "  🏠 Home - Features showcase" -ForegroundColor White
-Write-Host "  🛍️ Products - Material-UI catalog with search" -ForegroundColor White
-Write-Host "  💬 AI Chat - Real-time chatbot interface" -ForegroundColor White
-Write-Host "  📦 Orders - Order management with details" -ForegroundColor White
-Write-Host "  👔 Admin - Dashboard with analytics" -ForegroundColor White
-Write-Host ""
-Write-Host "Happy coding! 🚀✨" -ForegroundColor Green 
+# Function to handle cleanup on script exit
+function Cleanup {
+    Write-Host ""
+    Write-Host "🛑 Stopping all services..." -ForegroundColor Yellow
+    
+    # Stop backend processes
+    Get-Process -Name "java" -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq "java" } | Stop-Process -Force
+    
+    # Stop frontend processes
+    Get-Process -Name "node" -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq "node" } | Stop-Process -Force
+    
+    Write-Host "✅ All services stopped." -ForegroundColor Green
+}
+
+# Register cleanup function to run on script exit
+trap { Cleanup; break }
+
+# Main execution
+try {
+    # Start backend
+    Start-Backend
+    
+    # Wait a bit for backend to start
+    Start-Sleep -Seconds 5
+    
+    # Start frontend
+    Start-Frontend
+    
+    # Wait for services to be ready
+    Wait-ForServices
+    
+    # Keep script running
+    Write-Host "🔄 Services are running. Press Ctrl+C to stop..." -ForegroundColor Green
+    while ($true) {
+        Start-Sleep -Seconds 10
+    }
+} catch {
+    Write-Host "❌ An error occurred: $($_.Exception.Message)" -ForegroundColor Red
+    Cleanup
+    exit 1
+} 

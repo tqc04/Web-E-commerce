@@ -18,10 +18,10 @@ import java.util.Map;
 @Service
 public class AIService {
     
-    @Autowired
+    @Autowired(required = false)
     private ChatClient chatClient;
     
-    @Autowired
+    @Autowired(required = false)
     private EmbeddingClient embeddingClient;
     
     @Value("${spring.ai.openai.chat.model:gpt-4}")
@@ -42,6 +42,11 @@ public class AIService {
      */
     public String generateText(String prompt, Map<String, Object> variables) {
         try {
+            // Return empty string if chatClient is not available
+            if (chatClient == null) {
+                return "";
+            }
+            
             PromptTemplate promptTemplate = new PromptTemplate(prompt);
             Prompt finalPrompt = promptTemplate.create(variables);
             
@@ -56,15 +61,19 @@ public class AIService {
      */
     public String generateTextWithSystem(String systemMessage, String userMessage) {
         try {
+            // Return empty string if chatClient is not available
+            if (chatClient == null) {
+                return "";
+            }
+            
             List<Message> messages = List.of(
-                new UserMessage(systemMessage),
-                new UserMessage(userMessage)
+                new UserMessage(systemMessage + "\n\n" + userMessage)
             );
             
             Prompt prompt = new Prompt(messages);
             return chatClient.call(prompt).getResult().getOutput().getContent();
         } catch (Exception e) {
-            throw new AIServiceException("Failed to generate text with system message: " + e.getMessage(), e);
+            throw new AIServiceException("Failed to generate text with system: " + e.getMessage(), e);
         }
     }
     
@@ -73,6 +82,11 @@ public class AIService {
      */
     public List<Double> generateEmbedding(String text) {
         try {
+            // Return empty list if embeddingClient is not available
+            if (embeddingClient == null) {
+                return List.of();
+            }
+            
             EmbeddingRequest request = new EmbeddingRequest(List.of(text), null);
             EmbeddingResponse response = embeddingClient.call(request);
             return response.getResults().get(0).getOutput();
@@ -86,6 +100,11 @@ public class AIService {
      */
     public List<List<Double>> generateEmbeddings(List<String> texts) {
         try {
+            // Return empty list if embeddingClient is not available
+            if (embeddingClient == null) {
+                return List.of();
+            }
+            
             EmbeddingRequest request = new EmbeddingRequest(texts, null);
             EmbeddingResponse response = embeddingClient.call(request);
             return response.getResults().stream()

@@ -269,11 +269,16 @@ const LoginPage: React.FC = () => {
 
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1, mb: 2 }}>
                 <Link
-                  href="#"
+                  component="button"
+                  type="button"
                   variant="body2"
+                  onClick={() => navigate('/forgot-password')}
                   sx={{
                     textDecoration: 'none',
                     color: 'primary.main',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
                     '&:hover': {
                       textDecoration: 'underline'
                     }
@@ -288,7 +293,7 @@ const LoginPage: React.FC = () => {
                 fullWidth
                 variant="contained"
                 disabled={isLoading}
-                sx={{ 
+                sx={{
                   mt: 2, 
                   mb: 3, 
                   py: 1.5,
@@ -312,11 +317,16 @@ const LoginPage: React.FC = () => {
             <Typography variant="body2" color="text.secondary" textAlign="center">
               Don't have an account?{' '}
               <Link
-                href="#"
+                component="button"
+                type="button"
+                onClick={() => navigate('/signup')}
                 sx={{
                   color: 'primary.main',
                   textDecoration: 'none',
                   fontWeight: 500,
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
                   '&:hover': {
                     textDecoration: 'underline'
                   }

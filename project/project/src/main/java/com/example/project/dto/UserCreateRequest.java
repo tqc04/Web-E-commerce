@@ -1,6 +1,7 @@
 package com.example.project.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.example.project.entity.UserRole;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -33,6 +34,13 @@ public class UserCreateRequest {
     @JsonProperty("lastName")
     private String lastName;
     
+    @Size(max = 20, message = "Phone number must not exceed 20 characters")
+    @JsonProperty("phoneNumber")
+    private String phoneNumber;
+
+    @JsonProperty("role")
+    private UserRole role = UserRole.USER; // Default role
+    
     // Constructors
     public UserCreateRequest() {}
     
@@ -42,6 +50,17 @@ public class UserCreateRequest {
         this.password = password;
         this.firstName = firstName;
         this.lastName = lastName;
+        this.role = UserRole.USER;
+    }
+    
+    public UserCreateRequest(String username, String email, String password, String firstName, String lastName, String phoneNumber) {
+        this.username = username;
+        this.email = email;
+        this.password = password;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber;
+        this.role = UserRole.USER;
     }
     
     // Getters and Setters
@@ -60,6 +79,12 @@ public class UserCreateRequest {
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
     
+    public String getPhoneNumber() { return phoneNumber; }
+    public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public UserRole getRole() { return role; }
+    public void setRole(UserRole role) { this.role = role; }
+    
     @Override
     public String toString() {
         return "UserCreateRequest{" +
@@ -67,6 +92,8 @@ public class UserCreateRequest {
                 ", email='" + email + '\'' +
                 ", firstName='" + firstName + '\'' +
                 ", lastName='" + lastName + '\'' +
+                ", phoneNumber='" + phoneNumber + '\'' +
+                ", role=" + role +
                 '}';
     }
 } 
