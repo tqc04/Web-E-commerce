@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import com.example.project.dto.ProductSimpleResponse;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long> {
@@ -44,7 +45,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.purchaseCount >= :minPurchases")
     List<Product> findByMinPurchases(@Param("minPurchases") Long minPurchases);
     
-    @Query("SELECT p FROM Product p WHERE p.aiContentScore >= :minScore")
+    @Query("SELECT p FROM Product p WHERE p.recommendationScore >= :minScore")
     List<Product> findByMinAIContentScore(@Param("minScore") Double minScore);
     
     @Query("SELECT p FROM Product p WHERE p.recommendationScore >= :minScore")
@@ -85,4 +86,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     @Query("SELECT AVG(p.averageRating) FROM Product p WHERE p.isActive = true AND p.reviewCount > 0")
     Double getAverageRating();
+    
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
+    List<Product> findActiveProductsWithCategoryAndBrand();
+    
+    @Query("SELECT p FROM Product p JOIN p.category JOIN p.brand WHERE p.isActive = true")
+    List<Product> findActiveProductsAsDTO();
+
+    long countByIsActiveTrue();
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
+    List<Product> findAllWithCategory();
+    
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
+    Page<Product> findActiveWithCategoryAndBrand(Pageable pageable);
 } 

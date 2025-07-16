@@ -1,7 +1,9 @@
 package com.example.project.controller;
 
+import com.example.project.dto.OrderDTO;
 import com.example.project.entity.Order;
 import com.example.project.entity.OrderStatus;
+import com.example.project.entity.OrderStatusHistory;
 import com.example.project.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -24,36 +26,41 @@ public class OrderController {
     private OrderService orderService;
 
     /**
-     * Lấy thông tin đơn hàng
+     * Get order by ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Order> getOrderById(@PathVariable Long id) {
+    public ResponseEntity<OrderDTO> getOrderById(@PathVariable Long id) {
         try {
-            Optional<Order> order = orderService.findById(id);
-            return order.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+            Optional<Order> orderOpt = orderService.findById(id);
+            if (orderOpt.isPresent()) {
+                OrderDTO orderDTO = OrderDTO.from(orderOpt.get());
+                return ResponseEntity.ok(orderDTO);
+            }
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
     }
 
     /**
-     * Lấy danh sách đơn hàng theo user
+     * Get user orders
      */
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Page<Order>> getOrdersByUser(@PathVariable Long userId, Pageable pageable) {
+    public ResponseEntity<Page<OrderDTO>> getOrdersByUser(@PathVariable Long userId, Pageable pageable) {
         try {
             Page<Order> orders = orderService.getUserOrders(userId, pageable);
-            return ResponseEntity.ok(orders);
+            Page<OrderDTO> orderDTOs = orders.map(OrderDTO::from);
+            return ResponseEntity.ok(orderDTOs);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     /**
-     * Tạo đơn hàng mới
+     * Create new order
      */
     @PostMapping
-    public ResponseEntity<Order> createOrder(@RequestBody Map<String, Object> orderRequest, HttpServletRequest request) {
+    public ResponseEntity<OrderDTO> createOrder(@RequestBody Map<String, Object> orderRequest, HttpServletRequest request) {
         try {
             Long userId = Long.valueOf(orderRequest.get("userId").toString());
             String shippingAddress = (String) orderRequest.get("shippingAddress");
@@ -72,99 +79,121 @@ public class OrderController {
                     Integer.valueOf(item.get("quantity").toString())
                 ))
                 .collect(Collectors.toList());
-            
+
             Order createdOrder = orderService.createOrder(userId, items, shippingAddress, billingAddress, paymentMethod, ipAddress, userAgent);
-            return ResponseEntity.ok(createdOrder);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Cập nhật trạng thái đơn hàng
-     */
-    @PutMapping("/{id}/status")
-    public ResponseEntity<Void> updateOrderStatus(@PathVariable Long id, @RequestBody Map<String, String> statusRequest) {
-        try {
-            String statusStr = statusRequest.get("status");
-            String reason = statusRequest.get("reason");
-            OrderStatus status = OrderStatus.valueOf(statusStr.toUpperCase());
+            OrderDTO orderDTO = OrderDTO.from(createdOrder);
             
-            orderService.updateOrderStatus(id, status, reason);
-            return ResponseEntity.ok().build();
+            return ResponseEntity.ok(orderDTO);
+            
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     /**
-     * Hủy đơn hàng
+     * Cancel order
      */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> cancelOrder(@PathVariable Long id, @RequestBody Map<String, String> cancelRequest) {
+    @PostMapping("/{orderId}/cancel")
+    public ResponseEntity<Map<String, String>> cancelOrder(
+            @PathVariable Long orderId,
+            @RequestBody Map<String, String> cancelRequest,
+            HttpServletRequest request) {
         try {
-            String reason = cancelRequest.get("reason");
-            orderService.cancelOrder(id, reason);
-            return ResponseEntity.ok().build();
+            String reason = cancelRequest.getOrDefault("reason", "Customer cancellation");
+            String cancelledBy = cancelRequest.getOrDefault("cancelledBy", "customer");
+            String ipAddress = getClientIpAddress(request);
+            String userAgent = request.getHeader("User-Agent");
+
+            orderService.cancelOrder(orderId, reason, cancelledBy, ipAddress, userAgent);
+            
+            return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Order cancelled successfully"
+            ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of(
+                "status", "error",
+                "message", e.getMessage()
+            ));
         }
     }
 
     /**
-     * Lấy thông tin chi tiết đơn hàng
+     * Check if order can be cancelled
      */
-    @GetMapping("/{id}/insights")
-    public ResponseEntity<OrderService.OrderInsights> getOrderInsights(@PathVariable Long id) {
+    @GetMapping("/{orderId}/can-cancel")
+    public ResponseEntity<Map<String, Boolean>> canCancelOrder(@PathVariable Long orderId) {
         try {
-            OrderService.OrderInsights insights = orderService.getOrderInsights(id);
-            return ResponseEntity.ok(insights);
+            Optional<Order> orderOpt = orderService.findById(orderId);
+            if (orderOpt.isPresent()) {
+                boolean canCancel = orderService.canCancelOrder(orderOpt.get());
+                return ResponseEntity.ok(Map.of("canCancel", canCancel));
+            }
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("canCancel", false));
+        }
+    }
+
+    /**
+     * Get order status history
+     */
+    @GetMapping("/{orderId}/history")
+    public ResponseEntity<List<OrderStatusHistory>> getOrderHistory(@PathVariable Long orderId) {
+        try {
+            List<OrderStatusHistory> history = orderService.getOrderHistory(orderId);
+            return ResponseEntity.ok(history);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     /**
-     * Lấy đơn hàng theo trạng thái
+     * Get orders by status
      */
     @GetMapping("/status/{status}")
-    public ResponseEntity<Page<Order>> getOrdersByStatus(@PathVariable String status, Pageable pageable) {
+    public ResponseEntity<Page<OrderDTO>> getOrdersByStatus(@PathVariable OrderStatus status, Pageable pageable) {
         try {
-            OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
-            Page<Order> orders = orderService.getOrdersByStatus(orderStatus, pageable);
-            return ResponseEntity.ok(orders);
+            Page<Order> orders = orderService.getOrdersByStatus(status, pageable);
+            Page<OrderDTO> orderDTOs = orders.map(OrderDTO::from);
+            return ResponseEntity.ok(orderDTOs);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
     }
 
     /**
-     * Lấy đơn hàng bị flag để review
+     * Get order status info
      */
-    @GetMapping("/flagged")
-    public ResponseEntity<List<Order>> getFlaggedOrders() {
-        try {
-            List<Order> flaggedOrders = orderService.getFlaggedOrders();
-            return ResponseEntity.ok(flaggedOrders);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
+    @GetMapping("/status-info")
+    public ResponseEntity<Map<String, Object>> getOrderStatusInfo() {
+        Map<String, Object> statusInfo = Map.of(
+            "statuses", OrderStatus.values(),
+            "descriptions", Map.of(
+                "PENDING", "Order just created, waiting for processing",
+                "PENDING_APPROVAL", "Waiting for admin approval",
+                "APPROVED", "Approved by admin",
+                "CONFIRMED", "Payment confirmed",
+                "PROCESSING", "Order being processed/packed",
+                "SHIPPED", "Order shipped to customer",
+                "DELIVERED", "Order delivered successfully",
+                "COMPLETED", "Order completed by customer confirmation",
+                "CANCELLED", "Order cancelled",
+                "REFUNDED", "Order refunded"
+            )
+        );
+        return ResponseEntity.ok(statusInfo);
     }
 
     /**
-     * Helper method to get client IP address
+     * Get client IP address
      */
     private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
+        String xForwardedForHeader = request.getHeader("X-Forwarded-For");
+        if (xForwardedForHeader == null) {
+            return request.getRemoteAddr();
+        } else {
+            return xForwardedForHeader.split(",")[0];
         }
-        
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-        
-        return request.getRemoteAddr();
     }
 } 

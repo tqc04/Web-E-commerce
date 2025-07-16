@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
 
 // Base API configuration
-const API_BASE_URL = '/api'
+const API_BASE_URL = 'http://localhost:8081/api'
 const REQUEST_TIMEOUT = 10000
 
 // Create axios instance with default configuration
@@ -71,6 +71,7 @@ export interface User {
 
 export interface Order {
   id: number
+  orderNumber: string
   userId: number
   status: string
   totalAmount: number
@@ -124,207 +125,24 @@ class ApiService {
       const params = new URLSearchParams({
         page: page.toString(),
         size: size.toString(),
+        sort: 'id,asc'
       })
       if (search) params.append('search', search)
       if (category) params.append('category', category)
 
+      console.log('Calling API:', `/products?${params}`)
       const response = await apiClient.get(`/products?${params}`)
+      
+      console.log('API Response:', response.data)
       return {
         data: response.data,
         success: true,
       }
-    } catch (error) {
-      console.warn('Backend not available, using mock data for products:', error)
-      
-      // Mock products data
-      const mockProducts: Product[] = [
-        {
-          id: 1,
-          name: 'Gaming Laptop Pro Max',
-          description: 'High-performance gaming laptop with RTX 4080, 32GB RAM, and 1TB SSD. Perfect for gaming and content creation.',
-          price: 1299.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Electronics',
-          brand: 'TechBrand',
-          stockQuantity: 15,
-          rating: 4.8,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 2,
-          name: 'Wireless Gaming Mouse Elite',
-          description: 'Professional wireless gaming mouse with RGB lighting, 16000 DPI sensor, and 100-hour battery life.',
-          price: 79.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Gaming',
-          brand: 'GameMaster',
-          stockQuantity: 50,
-          rating: 4.6,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 3,
-          name: 'Premium Noise-Cancelling Headphones',
-          description: 'Studio-quality headphones with active noise cancellation, 30-hour battery, and premium comfort.',
-          price: 199.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Audio',
-          brand: 'SoundWave',
-          stockQuantity: 30,
-          rating: 4.9,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 4,
-          name: 'Smart Fitness Watch Pro',
-          description: 'Advanced fitness tracker with heart rate monitoring, GPS, and 7-day battery life.',
-          price: 299.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Mobile',
-          brand: 'MobileTech',
-          stockQuantity: 25,
-          rating: 4.7,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 5,
-          name: 'Ultrawide Gaming Monitor',
-          description: '34-inch curved ultrawide monitor with 144Hz refresh rate, 1ms response time, and HDR support.',
-          price: 449.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Computers',
-          brand: 'ComputeMax',
-          stockQuantity: 12,
-          rating: 4.5,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 6,
-          name: 'Mechanical Gaming Keyboard RGB',
-          description: 'Professional mechanical keyboard with Cherry MX switches, RGB backlighting, and programmable macros.',
-          price: 129.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Gaming',
-          brand: 'GameMaster',
-          stockQuantity: 40,
-          rating: 4.4,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 7,
-          name: 'Wireless Charging Pad Fast',
-          description: 'Fast wireless charging pad compatible with all Qi-enabled devices. Includes USB-C cable.',
-          price: 29.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Mobile',
-          brand: 'MobileTech',
-          stockQuantity: 100,
-          rating: 4.3,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 8,
-          name: 'Bluetooth Speaker Waterproof',
-          description: 'Portable waterproof Bluetooth speaker with 360-degree sound and 12-hour battery life.',
-          price: 89.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Audio',
-          brand: 'SoundWave',
-          stockQuantity: 60,
-          rating: 4.2,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 9,
-          name: 'USB-C Hub Multi-port',
-          description: '7-in-1 USB-C hub with HDMI, USB 3.0, SD card reader, and 100W power delivery.',
-          price: 49.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Computers',
-          brand: 'ComputeMax',
-          stockQuantity: 80,
-          rating: 4.1,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 10,
-          name: 'Gaming Chair Ergonomic',
-          description: 'Professional gaming chair with lumbar support, adjustable armrests, and premium leather.',
-          price: 299.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Gaming',
-          brand: 'GameMaster',
-          stockQuantity: 20,
-          rating: 4.6,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 11,
-          name: 'Smartphone 128GB Pro',
-          description: 'Latest smartphone with 108MP camera, 5G connectivity, and all-day battery life.',
-          price: 699.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Mobile',
-          brand: 'MobileTech',
-          stockQuantity: 35,
-          rating: 4.8,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        },
-        {
-          id: 12,
-          name: 'Webcam 4K HD Pro',
-          description: '4K webcam with auto-focus, noise-canceling microphone, and wide-angle lens.',
-          price: 149.99,
-          imageUrl: '/api/placeholder/400/300',
-          category: 'Computers',
-          brand: 'ComputeMax',
-          stockQuantity: 45,
-          rating: 4.4,
-          createdAt: '2024-01-01T00:00:00Z',
-          updatedAt: '2024-01-01T00:00:00Z'
-        }
-      ]
-
-      // Filter by search if provided
-      let filteredProducts = mockProducts
-      if (search) {
-        filteredProducts = mockProducts.filter(product =>
-          product.name.toLowerCase().includes(search.toLowerCase()) ||
-          product.description.toLowerCase().includes(search.toLowerCase()) ||
-          product.category.toLowerCase().includes(search.toLowerCase())
-        )
-      }
-
-      // Filter by category if provided
-      if (category) {
-        filteredProducts = filteredProducts.filter(product =>
-          product.category.toLowerCase() === category.toLowerCase()
-        )
-      }
-
-      // Pagination
-      const startIndex = page * size
-      const endIndex = startIndex + size
-      const paginatedProducts = filteredProducts.slice(startIndex, endIndex)
-
-      return {
-        data: {
-          content: paginatedProducts,
-          totalElements: filteredProducts.length
-        },
-        success: true,
-      }
+    } catch (error: any) {
+      console.error('Failed to fetch products from backend:', error)
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      throw error
     }
   }
 
@@ -369,6 +187,165 @@ class ApiService {
     }
   }
 
+  async cancelOrder(orderId: number, reason: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await apiClient.delete(`/orders/${orderId}`, {
+        data: { reason }
+      })
+      return {
+        data: response.data,
+        success: true,
+        message: 'Order cancelled successfully',
+      }
+    } catch (error) {
+      console.error('Failed to cancel order:', error)
+      throw error
+    }
+  }
+
+  // Cart API
+  async getCart(userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.get(`/cart${params}`)
+      return {
+        data: response.data,
+        success: true,
+        message: 'Cart retrieved successfully',
+      }
+    } catch (error) {
+      console.error('Failed to get cart:', error)
+      throw error
+    }
+  }
+
+  async addToCart(productId: number, quantity: number, userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.post(`/cart/add${params}`, {
+        productId,
+        quantity
+      })
+      return {
+        data: response.data,
+        success: true,
+        message: 'Product added to cart successfully',
+      }
+    } catch (error) {
+      console.error('Failed to add to cart:', error)
+      throw error
+    }
+  }
+
+  async updateCartItem(productId: number, quantity: number, userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.put(`/cart/update${params}`, {
+        productId,
+        quantity
+      })
+      return {
+        data: response.data,
+        success: true,
+        message: 'Cart item updated successfully',
+      }
+    } catch (error) {
+      console.error('Failed to update cart item:', error)
+      throw error
+    }
+  }
+
+  async removeFromCart(productId: number, userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.delete(`/cart/remove/${productId}${params}`)
+      return {
+        data: response.data,
+        success: true,
+        message: 'Product removed from cart successfully',
+      }
+    } catch (error) {
+      console.error('Failed to remove from cart:', error)
+      throw error
+    }
+  }
+
+  async clearCart(userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.delete(`/cart/clear${params}`)
+      return {
+        data: response.data,
+        success: true,
+        message: 'Cart cleared successfully',
+      }
+    } catch (error) {
+      console.error('Failed to clear cart:', error)
+      throw error
+    }
+  }
+
+  async applyPromoCode(promoCode: string, userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.post(`/cart/promo${params}`, {
+        promoCode
+      })
+      return {
+        data: response.data,
+        success: true,
+        message: 'Promo code applied successfully',
+      }
+    } catch (error) {
+      console.error('Failed to apply promo code:', error)
+      throw error
+    }
+  }
+
+  async removePromoCode(userId?: number): Promise<ApiResponse<any>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.delete(`/cart/promo${params}`)
+      return {
+        data: response.data,
+        success: true,
+        message: 'Promo code removed successfully',
+      }
+    } catch (error) {
+      console.error('Failed to remove promo code:', error)
+      throw error
+    }
+  }
+
+  async getCartItemCount(userId?: number): Promise<ApiResponse<number>> {
+    try {
+      const params = userId ? `?userId=${userId}` : ''
+      const response = await apiClient.get(`/cart/count${params}`)
+      return {
+        data: response.data,
+        success: true,
+        message: 'Cart count retrieved successfully',
+      }
+    } catch (error) {
+      console.error('Failed to get cart count:', error)
+      throw error
+    }
+  }
+
+  async mergeGuestCart(userId: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post(`/cart/merge?userId=${userId}`)
+      return {
+        data: response.data,
+        success: true,
+        message: 'Guest cart merged successfully',
+      }
+    } catch (error) {
+      console.error('Failed to merge guest cart:', error)
+      throw error
+    }
+  }
+
   // Users API  
   async getUsers(page = 0, size = 10): Promise<ApiResponse<{ content: User[], totalElements: number }>> {
     try {
@@ -383,132 +360,252 @@ class ApiService {
     }
   }
 
-  // Chatbot API
-  async sendChatMessage(sessionId: string, message: string): Promise<ApiResponse<ChatMessage>> {
+  /**
+   * User login
+   */
+  async login(username: string, password: string): Promise<ApiResponse<{ token: string, user: User }>> {
+    try {
+      const response = await apiClient.post('/auth/login', {
+        username,
+        password
+      })
+      
+      return {
+        data: {
+          token: response.data.token,
+          user: response.data.user
+        },
+        message: response.data.message || 'Login successful',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Login failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * User registration
+   */
+  async register(userData: {
+    username: string
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    phoneNumber?: string
+  }): Promise<ApiResponse<{ user: User }>> {
+    try {
+      const response = await apiClient.post('/auth/register', userData)
+      
+      return {
+        data: {
+          user: response.data.user
+        },
+        message: response.data.message || 'Registration successful',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Registration failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Forgot password - Send reset email
+   */
+  async forgotPassword(email: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/forgot-password', { email })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Reset email sent',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Forgot password failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(token: string, password: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/reset-password', { token, password })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Password reset successful',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Password reset failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(token: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/verify-email', { token })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Email verified successfully',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Email verification failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Change password (authenticated user)
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/change-password', {
+        currentPassword,
+        newPassword
+      })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Password changed successfully',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Password change failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get user profile
+   */
+  async getUserProfile(): Promise<ApiResponse<User>> {
+    try {
+      const response = await apiClient.get('/users/profile')
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch user profile:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateUserProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
+    try {
+      const response = await apiClient.put('/users/profile', userData)
+      return {
+        data: response.data,
+        message: 'Profile updated successfully',
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to update user profile:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Add product to favorites
+   */
+  async addToFavorites(productId: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post(`/users/favorites/${productId}`)
+      return {
+        data: response.data,
+        message: 'Added to favorites',
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to add to favorites:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Remove product from favorites
+   */
+  async removeFromFavorites(productId: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.delete(`/users/favorites/${productId}`)
+      return {
+        data: response.data,
+        message: 'Removed from favorites',
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to remove from favorites:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get user favorites
+   */
+  async getFavorites(): Promise<ApiResponse<Product[]>> {
+    try {
+      const response = await apiClient.get('/users/favorites')
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch favorites:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Send AI chat message
+   */
+  async sendChatMessage(message: string, sessionId?: string): Promise<ApiResponse<ChatMessage>> {
     try {
       const response = await apiClient.post('/chatbot/chat', {
-        sessionId,
         message,
+        sessionId
       })
       return {
         data: response.data,
-        success: true,
+        success: true
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to send chat message:', error)
       throw error
     }
   }
 
-  async createChatSession(): Promise<ApiResponse<{ sessionId: string }>> {
-    try {
-      const response = await apiClient.post('/chatbot/session')
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to create chat session:', error)
-      throw error
-    }
-  }
-
-  // Dashboard API
-  async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
-    try {
-      const response = await apiClient.get('/admin/dashboard/stats')
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error)
-      throw error
-    }
-  }
-
-  // Recommendations API
-  async getRecommendations(userId?: number): Promise<ApiResponse<Product[]>> {
-    try {
-      const url = userId ? `/recommendations?userId=${userId}` : '/recommendations'
-      const response = await apiClient.get(url)
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to fetch recommendations:', error)
-      throw error
-    }
-  }
-
   /**
-   * Mock login for testing (will be replaced with real API)
+   * Get chat history
    */
-  async login(username: string, password: string): Promise<ApiResponse<{ token: string, user: User }>> {
-    // Mock users from our database
-    const mockUsers = [
-      {
-        id: 4,
-        username: 'admin',
-        email: 'admin@example.com',
-        firstName: 'Admin',
-        lastName: 'User',
-        role: 'ADMIN',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 1,
-        username: 'testuser',
-        email: 'test@example.com',
-        firstName: 'Test',
-        lastName: 'User',
-        role: 'USER',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 2,
-        username: 'gamer123',
-        email: 'gamer@example.com',
-        firstName: 'Gaming',
-        lastName: 'Enthusiast',
-        role: 'USER',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 3,
-        username: 'techfan',
-        email: 'tech@example.com',
-        firstName: 'Tech',
-        lastName: 'Fan',
-        role: 'USER',
-        createdAt: new Date().toISOString()
+  async getChatHistory(sessionId: string): Promise<ApiResponse<ChatMessage[]>> {
+    try {
+      const response = await apiClient.get(`/chatbot/history/${sessionId}`)
+      return {
+        data: response.data,
+        success: true
       }
-    ]
-
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000))
-
-    // Find user
-    const user = mockUsers.find(u => u.username === username)
-    
-    if (!user || password !== 'password123') {
-      throw new Error('Invalid username or password')
-    }
-
-    // Return successful login response
-    return {
-      data: {
-        token: `mock_token_${user.id}_${Date.now()}`,
-        user
-      },
-      message: 'Login successful',
-      success: true
+    } catch (error: any) {
+      console.error('Failed to fetch chat history:', error)
+      throw error
     }
   }
 
   /**
-   * Mock logout
+   * Logout
    */
   async logout(): Promise<void> {
     // Clear any stored tokens

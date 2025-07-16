@@ -24,13 +24,13 @@ import java.util.stream.Collectors;
 @Service
 public class AIEnterpriseService {
     
-    @Autowired
+    @Autowired(required = false)
     private ChatClient chatClient;
     
-    @Autowired
+    @Autowired(required = false)
     private EmbeddingClient embeddingClient;
     
-    @Autowired
+    @Autowired(required = false)
     private WebClient webClient;
     
     @Value("${ai.service.content-generation.enabled:true}")
@@ -49,10 +49,15 @@ public class AIEnterpriseService {
     private boolean inventoryForecastingEnabled;
     
     /**
-     * Generate text using AI with variable substitution
+     * Generate text using AI with variables
      */
     public String generateText(String prompt, Map<String, Object> variables) {
         try {
+            // Return empty string if chatClient is not available
+            if (chatClient == null) {
+                return "";
+            }
+            
             // Replace variables in prompt
             String processedPrompt = processPromptVariables(prompt, variables);
             
@@ -71,6 +76,11 @@ public class AIEnterpriseService {
      */
     public String generateText(String prompt) {
         try {
+            // Return empty string if chatClient is not available
+            if (chatClient == null) {
+                return "";
+            }
+            
             Message message = new UserMessage(prompt);
             Prompt chatPrompt = new Prompt(List.of(message));
             ChatResponse response = chatClient.call(chatPrompt);
@@ -229,13 +239,12 @@ public class AIEnterpriseService {
         profile.append("Active User: ").append(user.isActive()).append("\n");
         
         // Add behavior analysis
-        Map<String, Long> behaviorCounts = user.getBehaviors().stream()
-            .collect(Collectors.groupingBy(
-                behavior -> behavior.getBehaviorType().name(),
-                Collectors.counting()
-            ));
-        
-        profile.append("Behavior Summary: ").append(behaviorCounts.toString()).append("\n");
+        String behaviors = user.getBehaviors();
+        if (behaviors != null && !behaviors.isEmpty()) {
+            profile.append("User Behaviors: ").append(behaviors).append("\n");
+        } else {
+            profile.append("User Behaviors: None recorded\n");
+        }
         
         return profile.toString();
     }

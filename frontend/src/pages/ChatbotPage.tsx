@@ -1,95 +1,106 @@
 import React, { useState, useEffect, useRef } from 'react'
 import {
-  Box,
   Container,
-  Typography,
-  TextField,
-  Button,
   Paper,
+  Box,
+  TextField,
+  IconButton,
+  Typography,
   Avatar,
-  Divider,
-  Card,
-  CardContent,
   Chip,
   List,
   ListItem,
-  Fade,
+  Divider,
+  Alert,
   CircularProgress,
+  Fab,
+  Tooltip,
+  Card,
+  CardContent
 } from '@mui/material'
 import {
   Send,
   SmartToy,
   Person,
-  Refresh,
   Clear,
+  Refresh,
+  QuestionAnswer,
+  Help,
+  ShoppingCart,
+  Search,
+  Support
 } from '@mui/icons-material'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { apiService, ChatMessage } from '../services/api'
-import notificationService from '../services/notificationService'
+import { useAuth } from '../contexts/AuthContext'
+import { apiService } from '../services/api'
+
+interface ChatMessage {
+  id?: number
+  sessionId: string
+  message: string
+  response?: string
+  messageType: 'USER' | 'BOT'
+  timestamp: string
+}
+
+interface QuickAction {
+  label: string
+  icon: React.ReactNode
+  message: string
+  color: 'primary' | 'secondary' | 'default'
+}
 
 const ChatbotPage: React.FC = () => {
-  const [message, setMessage] = useState('')
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const { isAuthenticated } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const queryClient = useQueryClient()
+  
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [inputMessage, setInputMessage] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [sessionId, setSessionId] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
 
-  // Create chat session
-  const createSessionMutation = useMutation({
-    mutationFn: () => apiService.createChatSession(),
-    onSuccess: (response) => {
-      if (response.success) {
-        setSessionId(response.data.sessionId)
-        setMessages([{
-          id: Date.now(),
-          sessionId: response.data.sessionId,
-          message: "Hello! I'm your AI shopping assistant. How can I help you today?",
-          messageType: 'BOT',
-          timestamp: new Date().toISOString(),
-        }])
-        notificationService.success('Chat session started!')
-      }
+  const quickActions: QuickAction[] = [
+    {
+      label: 'Find Products',
+      icon: <Search />,
+      message: 'Help me find products',
+      color: 'primary'
     },
-    onError: (error: any) => {
-      notificationService.error('Failed to start chat session')
-    }
-  })
-
-  // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: ({ sessionId, message }: { sessionId: string, message: string }) =>
-      apiService.sendChatMessage(sessionId, message),
-    onSuccess: (response, variables) => {
-      if (response.success) {
-        // Add bot response to messages
-        setMessages(prev => [...prev, {
-          id: Date.now(),
-          sessionId: variables.sessionId,
-          message: response.data.response || 'Sorry, I could not process your request.',
-          messageType: 'BOT',
-          timestamp: new Date().toISOString(),
-        }])
-      }
+    {
+      label: 'Order Status',
+      icon: <ShoppingCart />,
+      message: 'Check my order status',
+      color: 'secondary'
     },
-    onError: (error: any) => {
-      notificationService.error('Failed to send message')
-      // Add error message
-      setMessages(prev => [...prev, {
-        id: Date.now(),
-        sessionId: sessionId!,
-        message: 'Sorry, I encountered an error. Please try again.',
-        messageType: 'BOT',
-        timestamp: new Date().toISOString(),
-      }])
+    {
+      label: 'Recommendations',
+      icon: <SmartToy />,
+      message: 'Give me product recommendations',
+      color: 'primary'
+    },
+    {
+      label: 'Support',
+      icon: <Support />,
+      message: 'I need help with my account',
+      color: 'default'
     }
-  })
+  ]
 
-  // Initialize session on component mount
   useEffect(() => {
-    createSessionMutation.mutate()
+    // Generate a session ID when component mounts
+    setSessionId(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+    
+    // Add welcome message
+    const welcomeMessage: ChatMessage = {
+      sessionId: '',
+      message: '',
+      response: "Hello! I'm your AI shopping assistant. How can I help you today? I can help you find products, check orders, provide recommendations, and answer questions about our store.",
+      messageType: 'BOT',
+      timestamp: new Date().toISOString()
+    }
+    setMessages([welcomeMessage])
   }, [])
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -98,25 +109,59 @@ const ChatbotPage: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const handleSendMessage = () => {
-    if (!message.trim() || !sessionId || sendMessageMutation.isPending) return
+  const handleSendMessage = async (messageText?: string) => {
+    const messageToSend = messageText || inputMessage.trim()
+    
+    if (!messageToSend) return
 
-    // Add user message to state
+    if (!isAuthenticated) {
+      setError('Please log in to use the AI assistant')
+      return
+    }
+
     const userMessage: ChatMessage = {
-      id: Date.now(),
       sessionId,
-      message: message.trim(),
+      message: messageToSend,
       messageType: 'USER',
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toISOString()
     }
 
     setMessages(prev => [...prev, userMessage])
-    
-    // Send to backend
-    sendMessageMutation.mutate({ sessionId, message: message.trim() })
-    
-    // Clear input
-    setMessage('')
+    setInputMessage('')
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await apiService.sendChatMessage(messageToSend, sessionId)
+      
+      if (response.success) {
+        const botMessage: ChatMessage = {
+          sessionId: response.data.sessionId,
+          message: response.data.message,
+          response: response.data.response,
+          messageType: 'BOT',
+          timestamp: response.data.timestamp
+        }
+        
+        setMessages(prev => [...prev, botMessage])
+      }
+    } catch (error: any) {
+      console.error('Failed to send message:', error)
+      
+      // Fallback response for demo purposes
+      const fallbackResponse: ChatMessage = {
+        sessionId,
+        message: '',
+        response: "I apologize, but I'm currently experiencing technical difficulties. Please try again later or contact our support team for assistance.",
+        messageType: 'BOT',
+        timestamp: new Date().toISOString()
+      }
+      
+      setMessages(prev => [...prev, fallbackResponse])
+      setError('Failed to connect to AI assistant. Using offline mode.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleKeyPress = (event: React.KeyboardEvent) => {
@@ -126,245 +171,258 @@ const ChatbotPage: React.FC = () => {
     }
   }
 
-  const handleNewSession = () => {
+  const handleClearChat = () => {
     setMessages([])
-    setSessionId(null)
-    createSessionMutation.mutate()
+    setSessionId(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+    
+    // Add welcome message again
+    const welcomeMessage: ChatMessage = {
+      sessionId: '',
+      message: '',
+      response: "Chat cleared! How can I help you today?",
+      messageType: 'BOT',
+      timestamp: new Date().toISOString()
+    }
+    setMessages([welcomeMessage])
   }
 
-  const handleClearChat = () => {
-    setMessages(messages.filter(msg => msg.messageType === 'BOT' && messages.indexOf(msg) === 0))
+  const handleQuickAction = (action: QuickAction) => {
+    handleSendMessage(action.message)
   }
 
   const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    })
+    return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
-  const renderMessage = (msg: ChatMessage, index: number) => {
-    const isBot = msg.messageType === 'BOT'
-    
+  if (!isAuthenticated) {
     return (
-      <Fade in={true} timeout={300} key={msg.id || index}>
-        <ListItem
-          sx={{
-            flexDirection: 'column',
-            alignItems: isBot ? 'flex-start' : 'flex-end',
-            px: 1,
-            py: 0.5,
-          }}
-        >
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'flex-end',
-              maxWidth: '80%',
-              gap: 1,
-              flexDirection: isBot ? 'row' : 'row-reverse',
-            }}
-          >
-            <Avatar
-              sx={{
-                width: 32,
-                height: 32,
-                bgcolor: isBot ? 'primary.main' : 'secondary.main',
-              }}
-            >
-              {isBot ? <SmartToy /> : <Person />}
-            </Avatar>
-            
-            <Paper
-              elevation={1}
-              sx={{
-                px: 2,
-                py: 1,
-                bgcolor: isBot ? 'grey.100' : 'primary.main',
-                color: isBot ? 'text.primary' : 'primary.contrastText',
-                borderRadius: 2,
-                borderTopLeftRadius: isBot ? 0.5 : 2,
-                borderTopRightRadius: isBot ? 2 : 0.5,
-              }}
-            >
-              <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>
-                {msg.message}
-              </Typography>
-              <Typography
-                variant="caption"
-                sx={{
-                  display: 'block',
-                  mt: 0.5,
-                  opacity: 0.7,
-                  textAlign: isBot ? 'left' : 'right',
-                }}
-              >
-                {formatTime(msg.timestamp)}
-              </Typography>
-            </Paper>
-          </Box>
-        </ListItem>
-      </Fade>
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="warning">
+          Please log in to use the AI Assistant.
+        </Alert>
+      </Container>
     )
   }
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box sx={{ textAlign: 'center', mb: 3 }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          AI Assistant
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Get instant help with product recommendations, order assistance, and more
-        </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box display="flex" alignItems="center">
+          <SmartToy sx={{ fontSize: 40, mr: 2, color: 'primary.main' }} />
+          <Box>
+            <Typography variant="h4" component="h1">
+              AI Shopping Assistant
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Your personal AI-powered shopping companion
+            </Typography>
+          </Box>
+        </Box>
+        
+        <Box>
+          <Tooltip title="Clear Chat">
+            <IconButton onClick={handleClearChat}>
+              <Clear />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Refresh">
+            <IconButton onClick={() => window.location.reload()}>
+              <Refresh />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
-      {/* Chat Controls */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 2 }}>
-        <Button
-          variant="outlined"
-          startIcon={<Refresh />}
-          onClick={handleNewSession}
-          disabled={createSessionMutation.isPending}
-          size="small"
-        >
-          New Chat
-        </Button>
-        <Button
-          variant="outlined"
-          startIcon={<Clear />}
-          onClick={handleClearChat}
-          disabled={messages.length <= 1}
-          size="small"
-        >
-          Clear
-        </Button>
-        {sessionId && (
-          <Chip
-            label={`Session: ${sessionId.slice(0, 8)}...`}
-            size="small"
-            variant="outlined"
-            color="primary"
-          />
-        )}
-      </Box>
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
 
-      {/* Chat Container */}
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          height: 600,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Messages Area */}
-        <Box
-          sx={{
-            flexGrow: 1,
-            overflow: 'auto',
-            px: 1,
-            py: 2,
-            backgroundColor: 'grey.50',
-          }}
-        >
-          {createSessionMutation.isPending ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <List sx={{ width: '100%' }}>
-              {messages.map((msg, index) => renderMessage(msg, index))}
+      <Box display="flex" gap={3} height="70vh">
+        {/* Quick Actions Sidebar */}
+        <Box width={300} display={{ xs: 'none', md: 'block' }}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Typography variant="h6" gutterBottom>
+                Quick Actions
+              </Typography>
+              <Typography variant="body2" color="text.secondary" mb={2}>
+                Get started with these common requests:
+              </Typography>
               
-              {/* Typing indicator */}
-              {sendMessageMutation.isPending && (
-                <ListItem sx={{ justifyContent: 'flex-start', px: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
-                      <SmartToy />
-                    </Avatar>
-                    <Paper
-                      elevation={1}
+              <Box display="flex" flexDirection="column" gap={1}>
+                {quickActions.map((action, index) => (
+                  <Chip
+                    key={index}
+                    icon={action.icon}
+                    label={action.label}
+                    onClick={() => handleQuickAction(action)}
+                    color={action.color}
+                    variant="outlined"
+                    clickable
+                    sx={{ 
+                      justifyContent: 'flex-start',
+                      '& .MuiChip-label': { flexGrow: 1, textAlign: 'left' }
+                    }}
+                  />
+                ))}
+              </Box>
+
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography variant="body2" color="text.secondary">
+                💡 <strong>Tips:</strong>
+                <br />• Ask about specific products
+                <br />• Get personalized recommendations
+                <br />• Check order status
+                <br />• Get help with account issues
+                <br />• Ask for shopping advice
+              </Typography>
+            </CardContent>
+          </Card>
+        </Box>
+
+        {/* Chat Area */}
+        <Paper sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+          {/* Messages */}
+          <Box 
+            sx={{ 
+              flexGrow: 1, 
+              overflowY: 'auto', 
+              p: 2,
+              maxHeight: 'calc(70vh - 100px)'
+            }}
+          >
+            <List>
+              {messages.map((msg, index) => (
+                <ListItem 
+                  key={index}
+                  sx={{ 
+                    flexDirection: 'column',
+                    alignItems: msg.messageType === 'USER' ? 'flex-end' : 'flex-start',
+                    mb: 2
+                  }}
+                >
+                  <Box
+                    display="flex"
+                    alignItems="flex-start"
+                    gap={1}
+                    width="100%"
+                    justifyContent={msg.messageType === 'USER' ? 'flex-end' : 'flex-start'}
+                  >
+                    {msg.messageType === 'BOT' && (
+                      <Avatar sx={{ bgcolor: 'primary.main' }}>
+                        <SmartToy />
+                      </Avatar>
+                    )}
+                    
+                    <Box
                       sx={{
-                        px: 2,
-                        py: 1,
-                        bgcolor: 'grey.100',
+                        maxWidth: '70%',
+                        bgcolor: msg.messageType === 'USER' ? 'primary.main' : 'grey.100',
+                        color: msg.messageType === 'USER' ? 'white' : 'text.primary',
+                        p: 2,
                         borderRadius: 2,
-                        borderTopLeftRadius: 0.5,
+                        borderTopLeftRadius: msg.messageType === 'BOT' ? 0 : 2,
+                        borderTopRightRadius: msg.messageType === 'USER' ? 0 : 2,
                       }}
                     >
-                      <Typography variant="body2" color="text.secondary">
-                        AI is typing...
+                      <Typography variant="body1">
+                        {msg.messageType === 'USER' ? msg.message : msg.response}
                       </Typography>
-                      <CircularProgress size={16} sx={{ ml: 1 }} />
-                    </Paper>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          opacity: 0.7,
+                          display: 'block',
+                          mt: 0.5,
+                          textAlign: msg.messageType === 'USER' ? 'right' : 'left'
+                        }}
+                      >
+                        {formatTime(msg.timestamp)}
+                      </Typography>
+                    </Box>
+
+                    {msg.messageType === 'USER' && (
+                      <Avatar sx={{ bgcolor: 'secondary.main' }}>
+                        <Person />
+                      </Avatar>
+                    )}
+                  </Box>
+                </ListItem>
+              ))}
+              
+              {isLoading && (
+                <ListItem sx={{ justifyContent: 'flex-start' }}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Avatar sx={{ bgcolor: 'primary.main' }}>
+                      <SmartToy />
+                    </Avatar>
+                    <Box
+                      sx={{
+                        bgcolor: 'grey.100',
+                        p: 2,
+                        borderRadius: 2,
+                        borderTopLeftRadius: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }}
+                    >
+                      <CircularProgress size={20} />
+                      <Typography variant="body2">AI is thinking...</Typography>
+                    </Box>
                   </Box>
                 </ListItem>
               )}
-              
-              <div ref={messagesEndRef} />
             </List>
-          )}
-        </Box>
-
-        <Divider />
-
-        {/* Input Area */}
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            <TextField
-              fullWidth
-              multiline
-              maxRows={3}
-              placeholder="Type your message..."
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              disabled={!sessionId || sendMessageMutation.isPending}
-              variant="outlined"
-              size="small"
-            />
-            <Button
-              variant="contained"
-              onClick={handleSendMessage}
-              disabled={!message.trim() || !sessionId || sendMessageMutation.isPending}
-              sx={{ px: 3 }}
-            >
-              <Send />
-            </Button>
+            <div ref={messagesEndRef} />
           </Box>
-          
-          <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-            Press Enter to send, Shift+Enter for new line
-          </Typography>
-        </Box>
-      </Paper>
 
-      {/* Quick Actions */}
-      <Box sx={{ mt: 3, textAlign: 'center' }}>
-        <Typography variant="body2" color="text.secondary" gutterBottom>
-          Try asking:
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 1 }}>
-          {[
-            "What products do you recommend?",
-            "Help me find electronics",
-            "Check my order status",
-            "What's on sale today?",
-          ].map((suggestion, index) => (
-            <Chip
-              key={index}
-              label={suggestion}
-              variant="outlined"
-              size="small"
-              onClick={() => setMessage(suggestion)}
-              sx={{ cursor: 'pointer' }}
-            />
-          ))}
-        </Box>
+          {/* Input Area */}
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+            <Box display="flex" gap={1}>
+              <TextField
+                fullWidth
+                multiline
+                maxRows={3}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Type your message here... (Press Enter to send)"
+                disabled={isLoading}
+                variant="outlined"
+                size="small"
+              />
+              <IconButton
+                color="primary"
+                onClick={() => handleSendMessage()}
+                disabled={!inputMessage.trim() || isLoading}
+                sx={{ alignSelf: 'flex-end' }}
+              >
+                <Send />
+              </IconButton>
+            </Box>
+          </Box>
+        </Paper>
       </Box>
+
+      {/* Floating Help Button */}
+      <Fab
+        color="primary"
+        aria-label="help"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+        }}
+        onClick={() => handleSendMessage('How can you help me?')}
+      >
+        <Help />
+      </Fab>
     </Container>
   )
 }

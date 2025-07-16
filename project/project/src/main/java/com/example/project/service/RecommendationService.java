@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Arrays;
 
 @Service
 @Transactional
@@ -45,22 +46,18 @@ public class RecommendationService {
             return getFallbackRecommendations(limit);
         }
         
-        // Get user's behavior patterns
-        List<UserBehavior> behaviors = user.getBehaviors();
-        
-        // Build recommendation query from user data
+        // Build recommendation query from user data  
         Set<String> interests = new HashSet<>();
-        interests.addAll(user.getInterests());
-        interests.addAll(user.getPreferences());
         
-        // Add recent behavior insights
-        behaviors.stream()
-                .filter(b -> b.getProduct() != null)
-                .limit(10) // Last 10 behaviors
-                .forEach(b -> {
-                    interests.add(b.getProduct().getCategory().getName());
-                    interests.add(b.getProduct().getBrand().getName());
-                });
+        // Get interests from user - handle String field properly
+        if (user.getInterests() != null && !user.getInterests().isEmpty()) {
+            interests.addAll(Arrays.asList(user.getInterests().split(",")));
+        }
+        
+        // Get preferences from user - handle String field properly  
+        if (user.getPreferences() != null && !user.getPreferences().isEmpty()) {
+            interests.addAll(Arrays.asList(user.getPreferences().split(",")));
+        }
         
         String query = String.join(" ", interests);
         
@@ -322,13 +319,27 @@ public class RecommendationService {
     private double calculateRelevanceScore(User user, Product product) {
         double score = 0.0;
         
-        // Check interests match
-        Set<String> userInterests = new HashSet<>(user.getInterests());
-        userInterests.addAll(user.getPreferences());
+        // Check interests match - properly handle String fields
+        Set<String> userInterests = new HashSet<>();
         
-        Set<String> productTags = new HashSet<>(product.getTags());
-        if (product.getAiTags() != null) {
-            productTags.addAll(product.getAiTags());
+        // Convert user interests from String to Set
+        if (user.getInterests() != null && !user.getInterests().isEmpty()) {
+            userInterests.addAll(Arrays.asList(user.getInterests().split(",")));
+        }
+        
+        // Convert user preferences from String to Set
+        if (user.getPreferences() != null && !user.getPreferences().isEmpty()) {
+            userInterests.addAll(Arrays.asList(user.getPreferences().split(",")));
+        }
+        
+        Set<String> productTags = new HashSet<>();
+        // Convert product tags from String to Set
+        if (product.getTags() != null && !product.getTags().isEmpty()) {
+            productTags.addAll(Arrays.asList(product.getTags().split(",")));
+        }
+        // Convert AI tags from String to Set
+        if (product.getAiTags() != null && !product.getAiTags().isEmpty()) {
+            productTags.addAll(Arrays.asList(product.getAiTags().split(",")));
         }
         productTags.add(product.getCategory().getName());
         productTags.add(product.getBrand().getName());
@@ -378,9 +389,16 @@ public class RecommendationService {
             }
         }
         
-        // Similar tags
-        Set<String> tags1 = new HashSet<>(product1.getTags());
-        Set<String> tags2 = new HashSet<>(product2.getTags());
+        // Similar tags - handle String fields properly
+        Set<String> tags1 = new HashSet<>();
+        if (product1.getTags() != null && !product1.getTags().isEmpty()) {
+            tags1.addAll(Arrays.asList(product1.getTags().split(",")));
+        }
+        
+        Set<String> tags2 = new HashSet<>();
+        if (product2.getTags() != null && !product2.getTags().isEmpty()) {
+            tags2.addAll(Arrays.asList(product2.getTags().split(",")));
+        }
         
         Set<String> intersection = new HashSet<>(tags1);
         intersection.retainAll(tags2);
@@ -408,8 +426,14 @@ public class RecommendationService {
                 Create a friendly, 1-sentence explanation (max 100 characters).
                 """;
             
+            // Handle user interests as String field
+            String userInterestsStr = "";
+            if (user.getInterests() != null && !user.getInterests().isEmpty()) {
+                userInterestsStr = user.getInterests().replace(",", ", ");
+            }
+            
             Map<String, Object> variables = Map.of(
-                    "interests", String.join(", ", user.getInterests()),
+                    "interests", userInterestsStr,
                     "productName", product.getName(),
                     "category", product.getCategory().getName(),
                     "brand", product.getBrand().getName()

@@ -88,7 +88,7 @@ public class Order {
     private String fraudAnalysis;
     
     @Column(name = "is_flagged_for_review")
-    private boolean isFlaggedForReview = false;
+    private Boolean isFlaggedForReview = false;
     
     @Column(name = "risk_level")
     @Enumerated(EnumType.STRING)
@@ -299,11 +299,11 @@ public class Order {
         this.fraudAnalysis = fraudAnalysis;
     }
     
-    public boolean isFlaggedForReview() {
+    public Boolean isFlaggedForReview() {
         return isFlaggedForReview;
     }
     
-    public void setFlaggedForReview(boolean flaggedForReview) {
+    public void setFlaggedForReview(Boolean flaggedForReview) {
         isFlaggedForReview = flaggedForReview;
     }
     

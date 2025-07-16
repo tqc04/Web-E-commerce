@@ -1,6 +1,5 @@
-import React from 'react'
+import React from 'react';
 import {
-  Box,
   Container,
   Typography,
   Button,
@@ -8,125 +7,120 @@ import {
   Card,
   CardContent,
   CardMedia,
-  TextField,
-  InputAdornment,
-  Avatar,
-  Rating,
-  Paper,
+  Box,
   Chip,
-} from '@mui/material'
+  Rating,
+  Avatar,
+  Paper,
+  IconButton,
+  Divider,
+} from '@mui/material';
 import {
-  Search,
-  ArrowForward,
   ShoppingCart,
+  Favorite,
   Star,
-  People,
-  Inventory,
-  AttachMoney,
+  TrendingUp,
   LocalShipping,
   Security,
   SupportAgent,
-  Email,
+  VerifiedUser,
+  ArrowForward,
   PlayArrow,
-} from '@mui/icons-material'
-import { useNavigate } from 'react-router-dom'
+  Facebook,
+  Twitter,
+  Instagram,
+  LinkedIn,
+} from '@mui/icons-material';
+import { Link } from 'react-router-dom';
 
 const HomePage: React.FC = () => {
-  const navigate = useNavigate()
-
-  const categories = [
-    { name: 'Electronics', image: '/api/placeholder/200/150', count: '2,345+', color: '#1976d2' },
-    { name: 'Gaming', image: '/api/placeholder/200/150', count: '1,876+', color: '#9c27b0' },
-    { name: 'Computers', image: '/api/placeholder/200/150', count: '3,421+', color: '#f57c00' },
-    { name: 'Mobile', image: '/api/placeholder/200/150', count: '4,567+', color: '#388e3c' },
-    { name: 'Audio', image: '/api/placeholder/200/150', count: '1,234+', color: '#d32f2f' },
-    { name: 'Accessories', image: '/api/placeholder/200/150', count: '987+', color: '#7b1fa2' },
-  ]
-
+  // Mock data for featured products
   const featuredProducts = [
     {
       id: 1,
       name: 'Gaming Laptop Pro',
       price: 1299.99,
-      originalPrice: 1599.99,
-      image: '/api/placeholder/300/250',
+      originalPrice: 1499.99,
       rating: 4.8,
-      reviews: 245,
-      badge: 'Best Seller'
+      reviews: 124,
+      image: 'https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=400',
+      category: 'Gaming',
+      badge: 'Hot',
     },
     {
       id: 2,
-      name: 'Wireless Gaming Mouse',
-      price: 79.99,
-      originalPrice: 99.99,
-      image: '/api/placeholder/300/250',
+      name: 'Wireless Headphones',
+      price: 199.99,
+      originalPrice: 249.99,
       rating: 4.6,
-      reviews: 189,
-      badge: 'New'
+      reviews: 89,
+      image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400',
+      category: 'Audio',
+      badge: 'Sale',
     },
     {
       id: 3,
-      name: 'Premium Headphones',
-      price: 199.99,
-      originalPrice: 249.99,
-      image: '/api/placeholder/300/250',
+      name: 'Smartphone X',
+      price: 899.99,
+      originalPrice: 999.99,
       rating: 4.9,
-      reviews: 432,
-      badge: '20% OFF'
+      reviews: 256,
+      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400',
+      category: 'Mobile',
+      badge: 'New',
     },
     {
       id: 4,
-      name: 'Smart Fitness Watch',
-      price: 299.99,
-      originalPrice: 399.99,
-      image: '/api/placeholder/300/250',
+      name: '4K Monitor',
+      price: 399.99,
+      originalPrice: 499.99,
       rating: 4.7,
-      reviews: 321,
-      badge: 'Featured'
+      reviews: 67,
+      image: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400',
+      category: 'Computers',
+      badge: 'Popular',
     },
-  ]
+  ];
+
+  const categories = [
+    { name: 'Electronics', icon: '💻', count: 150, color: '#667eea' },
+    { name: 'Gaming', icon: '🎮', count: 89, color: '#764ba2' },
+    { name: 'Computers', icon: '🖥️', count: 67, color: '#f093fb' },
+    { name: 'Mobile', icon: '📱', count: 123, color: '#4facfe' },
+    { name: 'Audio', icon: '🎧', count: 45, color: '#43e97b' },
+    { name: 'Accessories', icon: '🔌', count: 78, color: '#fa709a' },
+  ];
+
+  const stats = [
+    { number: '50K+', label: 'Happy Customers', icon: '😊' },
+    { number: '100K+', label: 'Products Sold', icon: '📦' },
+    { number: '24/7', label: 'Customer Support', icon: '🛟' },
+    { number: '99%', label: 'Satisfaction Rate', icon: '⭐' },
+  ];
 
   const testimonials = [
     {
       name: 'Sarah Johnson',
-      avatar: '/api/placeholder/60/60',
+      role: 'Tech Enthusiast',
+      avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100',
       rating: 5,
-      comment: 'Amazing shopping experience! Fast delivery and excellent customer service.',
-      location: 'New York, USA'
+      comment: 'Amazing selection of products and excellent customer service. The AI assistant helped me find exactly what I needed!',
     },
     {
-      name: 'Michael Chen',
-      avatar: '/api/placeholder/60/60',
+      name: 'Mike Chen',
+      role: 'Gamer',
+      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
       rating: 5,
-      comment: 'The AI recommendations are spot on. Found exactly what I was looking for!',
-      location: 'San Francisco, USA'
+      comment: 'Best prices for gaming gear. Fast shipping and the products are exactly as described. Highly recommended!',
     },
     {
-      name: 'Emma Wilson',
-      avatar: '/api/placeholder/60/60',
+      name: 'Emily Davis',
+      role: 'Student',
+      avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
       rating: 5,
-      comment: 'Love the chatbot feature. It helped me choose the perfect laptop.',
-      location: 'London, UK'
+      comment: 'Perfect for my laptop needs. The support team was incredibly helpful when I had questions about compatibility.',
     },
-  ]
-
-  const stats = [
-    { icon: <People sx={{ fontSize: 40 }} />, number: '1M+', label: 'Happy Customers' },
-    { icon: <Inventory sx={{ fontSize: 40 }} />, number: '50K+', label: 'Products' },
-    { icon: <LocalShipping sx={{ fontSize: 40 }} />, number: '99.9%', label: 'On-time Delivery' },
-    { icon: <Star sx={{ fontSize: 40 }} />, number: '4.9/5', label: 'Customer Rating' },
-  ]
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(price)
-  }
-
-  const calculateDiscount = (original: number, current: number) => {
-    return Math.round(((original - current) / original) * 100)
-  }
+  ];
 
   return (
     <Box>
@@ -135,147 +129,100 @@ const HomePage: React.FC = () => {
         sx={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          py: { xs: 8, md: 12 },
+          py: { xs: 6, md: 10 },
           position: 'relative',
           overflow: 'hidden',
-          '&::before': {
-            content: '""',
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'url(/api/placeholder/1920/1080) center/cover',
-            opacity: 0.1,
-            zIndex: 0,
-          }
         }}
       >
-        <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
+        <Container maxWidth="lg">
           <Grid container spacing={4} alignItems="center">
             <Grid item xs={12} md={6}>
-              <Typography 
-                variant="h2" 
-                component="h1" 
-                gutterBottom
-                sx={{ 
+              <Typography
+                variant="h2"
+                component="h1"
+                sx={{
                   fontWeight: 'bold',
+                  mb: 2,
                   fontSize: { xs: '2.5rem', md: '3.5rem' },
-                  lineHeight: 1.2
                 }}
               >
-                Discover Amazing Products
+                Welcome to ShopPro
               </Typography>
-              <Typography 
-                variant="h5" 
-                component="p" 
-                gutterBottom 
-                sx={{ 
-                  mb: 4, 
+              <Typography
+                variant="h5"
+                sx={{
+                  mb: 3,
                   opacity: 0.9,
-                  fontSize: { xs: '1.1rem', md: '1.25rem' }
+                  lineHeight: 1.4,
                 }}
               >
-                Shop the latest trends with AI-powered recommendations. 
-                Fast delivery, secure payments, and 24/7 customer support.
+                Your ultimate destination for cutting-edge technology and innovative AI-powered shopping experiences
               </Typography>
-              
-              <Box sx={{ mb: 4 }}>
-                <TextField
-                  fullWidth
-                  placeholder="Search for products..."
-                  variant="outlined"
-                  sx={{
-                    maxWidth: 500,
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      borderRadius: 3,
-                      '& fieldset': { border: 'none' },
-                    }
-                  }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <Search color="action" />
-                      </InputAdornment>
-                    ),
-                    endAdornment: (
-                      <Button
-                        variant="contained"
-                        sx={{ 
-                          borderRadius: 2,
-                          px: 3,
-                          background: 'linear-gradient(45deg, #667eea, #764ba2)'
-                        }}
-                      >
-                        Search
-                      </Button>
-                    ),
-                  }}
-                />
-              </Box>
-
               <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Button
+                  component={Link}
+                  to="/products"
                   variant="contained"
                   size="large"
-                  onClick={() => navigate('/products')}
-                  sx={{ 
-                    px: 4,
+                  startIcon={<ShoppingCart />}
+                  sx={{
                     py: 1.5,
+                    px: 4,
                     borderRadius: 3,
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    textTransform: 'none',
                     backgroundColor: 'white',
                     color: 'primary.main',
-                    fontWeight: 'bold',
                     '&:hover': {
                       backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                      transform: 'translateY(-2px)',
-                    }
+                    },
                   }}
-                  endIcon={<ArrowForward />}
                 >
                   Shop Now
                 </Button>
                 <Button
+                  component={Link}
+                  to="/ai-assistant"
                   variant="outlined"
                   size="large"
-                  sx={{ 
-                    px: 4,
+                  startIcon={<PlayArrow />}
+                  sx={{
                     py: 1.5,
+                    px: 4,
                     borderRadius: 3,
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    textTransform: 'none',
                     borderColor: 'white',
                     color: 'white',
-                    fontWeight: 'bold',
                     '&:hover': {
                       borderColor: 'white',
                       backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    }
+                    },
                   }}
-                  startIcon={<PlayArrow />}
                 >
-                  Watch Demo
+                  Try AI Assistant
                 </Button>
               </Box>
             </Grid>
-            
             <Grid item xs={12} md={6}>
               <Box
                 sx={{
                   display: 'flex',
                   justifyContent: 'center',
                   alignItems: 'center',
-                  height: { xs: 300, md: 400 },
                 }}
               >
                 <img
-                  src="/api/placeholder/500/400"
-                  alt="Shopping Experience"
+                  src="https://images.unsplash.com/photo-1603302576837-37561b2e2302?w=600"
+                  alt="Hero Product"
                   style={{
                     width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    borderRadius: 16,
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+                    maxWidth: 500,
+                    height: 'auto',
+                    borderRadius: 20,
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
                   }}
                 />
               </Box>
@@ -285,26 +232,29 @@ const HomePage: React.FC = () => {
       </Box>
 
       {/* Stats Section */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Grid container spacing={4}>
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        <Grid container spacing={3}>
           {stats.map((stat, index) => (
             <Grid item xs={6} md={3} key={index}>
               <Paper
-                elevation={0}
+                elevation={2}
                 sx={{
                   p: 3,
                   textAlign: 'center',
-                  background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
                   borderRadius: 3,
+                  transition: 'transform 0.2s ease',
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                  },
                 }}
               >
-                <Box sx={{ color: 'primary.main', mb: 1 }}>
+                <Typography variant="h3" sx={{ fontSize: '2.5rem', fontWeight: 'bold', mb: 1 }}>
                   {stat.icon}
-                </Box>
-                <Typography variant="h4" fontWeight="bold" color="primary.main">
+                </Typography>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'primary.main', mb: 1 }}>
                   {stat.number}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" color="text.secondary">
                   {stat.label}
                 </Typography>
               </Paper>
@@ -314,60 +264,62 @@ const HomePage: React.FC = () => {
       </Container>
 
       {/* Categories Section */}
-      <Box sx={{ backgroundColor: '#f8f9fa', py: 8 }}>
+      <Box sx={{ bgcolor: 'background.default', py: 6 }}>
         <Container maxWidth="lg">
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontWeight: 'bold', mb: 2 }}
+          <Typography
+            variant="h3"
+            component="h2"
+            sx={{
+              textAlign: 'center',
+              fontWeight: 'bold',
+              mb: 1,
+            }}
           >
             Shop by Category
           </Typography>
-          <Typography 
-            variant="body1" 
-            textAlign="center" 
-            color="text.secondary" 
-            sx={{ mb: 6, maxWidth: 600, mx: 'auto' }}
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            sx={{
+              textAlign: 'center',
+              mb: 5,
+            }}
           >
-            Explore our wide range of products across different categories
+            Discover our wide range of products
           </Typography>
 
           <Grid container spacing={3}>
             {categories.map((category, index) => (
-              <Grid item xs={6} md={4} lg={2} key={index}>
+              <Grid item xs={6} sm={4} md={2} key={index}>
                 <Card
+                  component={Link}
+                  to={`/products?category=${category.name.toLowerCase()}`}
                   sx={{
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
+                    textDecoration: 'none',
+                    height: '100%',
                     borderRadius: 3,
+                    transition: 'all 0.3s ease',
                     '&:hover': {
                       transform: 'translateY(-8px)',
-                      boxShadow: 4,
+                      boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
                     },
                   }}
-                  onClick={() => navigate('/products')}
                 >
-                  <CardMedia
-                    component="img"
-                    height="120"
-                    image={category.image}
-                    alt={category.name}
-                  />
-                  <CardContent sx={{ textAlign: 'center', py: 2 }}>
-                    <Typography variant="h6" gutterBottom fontWeight="bold">
+                  <CardContent
+                    sx={{
+                      textAlign: 'center',
+                      py: 4,
+                    }}
+                  >
+                    <Typography variant="h2" sx={{ mb: 2 }}>
+                      {category.icon}
+                    </Typography>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                       {category.name}
                     </Typography>
-                    <Chip
-                      label={category.count}
-                      size="small"
-                      sx={{ 
-                        backgroundColor: category.color,
-                        color: 'white',
-                        fontWeight: 'bold'
-                      }}
-                    />
+                    <Typography variant="body2" color="text.secondary">
+                      {category.count} products
+                    </Typography>
                   </CardContent>
                 </Card>
               </Grid>
@@ -377,20 +329,33 @@ const HomePage: React.FC = () => {
       </Box>
 
       {/* Featured Products */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
+      <Container maxWidth="lg" sx={{ py: 6 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4 }}>
           <Box>
-            <Typography variant="h3" component="h2" fontWeight="bold" gutterBottom>
+            <Typography
+              variant="h3"
+              component="h2"
+              sx={{
+                fontWeight: 'bold',
+                mb: 1,
+              }}
+            >
               Featured Products
             </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Handpicked products just for you
+            <Typography variant="h6" color="text.secondary">
+              Handpicked products for you
             </Typography>
           </Box>
           <Button
+            component={Link}
+            to="/products"
             variant="outlined"
-            onClick={() => navigate('/products')}
             endIcon={<ArrowForward />}
+            sx={{
+              borderRadius: 3,
+              textTransform: 'none',
+              fontWeight: 'bold',
+            }}
           >
             View All
           </Button>
@@ -401,80 +366,85 @@ const HomePage: React.FC = () => {
             <Grid item xs={12} sm={6} md={3} key={product.id}>
               <Card
                 sx={{
-                  position: 'relative',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
+                  height: '100%',
                   borderRadius: 3,
+                  transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    boxShadow: 4,
+                    boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
                   },
                 }}
-                onClick={() => navigate('/products')}
               >
-                {product.badge && (
+                <Box sx={{ position: 'relative' }}>
+                  <CardMedia
+                    component="img"
+                    height="200"
+                    image={product.image}
+                    alt={product.name}
+                    sx={{ objectFit: 'cover' }}
+                  />
                   <Chip
                     label={product.badge}
                     size="small"
                     sx={{
                       position: 'absolute',
-                      top: 8,
-                      left: 8,
-                      zIndex: 1,
-                      backgroundColor: 'error.main',
+                      top: 12,
+                      left: 12,
+                      backgroundColor: 'primary.main',
                       color: 'white',
                       fontWeight: 'bold',
                     }}
                   />
-                )}
-                
-                <CardMedia
-                  component="img"
-                  height="200"
-                  image={product.image}
-                  alt={product.name}
-                />
-                
-                <CardContent>
-                  <Typography variant="h6" gutterBottom noWrap>
+                  <IconButton
+                    sx={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                      '&:hover': {
+                        backgroundColor: 'white',
+                      },
+                    }}
+                  >
+                    <Favorite />
+                  </IconButton>
+                </Box>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography variant="caption" color="primary.main" sx={{ fontWeight: 'bold' }}>
+                    {product.category}
+                  </Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                     {product.name}
                   </Typography>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Rating value={product.rating} precision={0.1} size="small" readOnly />
                     <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
                       ({product.reviews})
                     </Typography>
                   </Box>
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="h6" color="primary" fontWeight="bold">
-                      {formatPrice(product.price)}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
+                      ${product.price}
                     </Typography>
-                    {product.originalPrice > product.price && (
-                      <>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ textDecoration: 'line-through' }}
-                          color="text.secondary"
-                        >
-                          {formatPrice(product.originalPrice)}
-                        </Typography>
-                        <Chip
-                          label={`-${calculateDiscount(product.originalPrice, product.price)}%`}
-                          size="small"
-                          color="error"
-                          variant="outlined"
-                        />
-                      </>
-                    )}
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        textDecoration: 'line-through',
+                        color: 'text.secondary',
+                      }}
+                    >
+                      ${product.originalPrice}
+                    </Typography>
                   </Box>
-
                   <Button
                     fullWidth
                     variant="contained"
                     startIcon={<ShoppingCart />}
-                    sx={{ mt: 2, borderRadius: 2 }}
+                    sx={{
+                      borderRadius: 2,
+                      textTransform: 'none',
+                      fontWeight: 'bold',
+                    }}
                   >
                     Add to Cart
                   </Button>
@@ -485,60 +455,129 @@ const HomePage: React.FC = () => {
         </Grid>
       </Container>
 
-      {/* Why Choose Us */}
-      <Box sx={{ backgroundColor: '#f8f9fa', py: 8 }}>
+      {/* Features Section */}
+      <Box sx={{ bgcolor: 'background.default', py: 6 }}>
         <Container maxWidth="lg">
-          <Typography 
-            variant="h3" 
-            component="h2" 
-            textAlign="center" 
-            gutterBottom
-            sx={{ fontWeight: 'bold', mb: 2 }}
+          <Typography
+            variant="h3"
+            component="h2"
+            sx={{
+              textAlign: 'center',
+              fontWeight: 'bold',
+              mb: 1,
+            }}
           >
             Why Choose ShopPro?
           </Typography>
-          <Typography 
-            variant="body1" 
-            textAlign="center" 
-            color="text.secondary" 
-            sx={{ mb: 6, maxWidth: 600, mx: 'auto' }}
+          <Typography
+            variant="h6"
+            color="text.secondary"
+            sx={{
+              textAlign: 'center',
+              mb: 5,
+            }}
           >
-            We provide the best shopping experience with cutting-edge technology
+            We provide the best shopping experience
           </Typography>
 
           <Grid container spacing={4}>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <Box sx={{ textAlign: 'center' }}>
-                <LocalShipping sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="bold">
-                  Free Shipping
+                <Box
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    backgroundColor: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 3,
+                  }}
+                >
+                  <LocalShipping sx={{ fontSize: 40, color: 'white' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Fast Shipping
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Free shipping on all orders over $50. Fast and reliable delivery worldwide.
+                  Free shipping on orders over $50. Get your products delivered within 2-3 business days.
                 </Typography>
               </Box>
             </Grid>
-            
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <Box sx={{ textAlign: 'center' }}>
-                <Security sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="bold">
+                <Box
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    backgroundColor: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 3,
+                  }}
+                >
+                  <Security sx={{ fontSize: 40, color: 'white' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
                   Secure Payments
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Your payment information is protected with bank-level security encryption.
+                  Your payment information is protected with bank-level security and encryption.
                 </Typography>
               </Box>
             </Grid>
-            
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <Box sx={{ textAlign: 'center' }}>
-                <SupportAgent sx={{ fontSize: 60, color: 'primary.main', mb: 2 }} />
-                <Typography variant="h5" gutterBottom fontWeight="bold">
+                <Box
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    backgroundColor: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 3,
+                  }}
+                >
+                  <SupportAgent sx={{ fontSize: 40, color: 'white' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
                   24/7 Support
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Our AI-powered support team is available around the clock to help you.
+                  Our customer support team is available 24/7 to help you with any questions.
+                </Typography>
+              </Box>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Box sx={{ textAlign: 'center' }}>
+                <Box
+                  sx={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: '50%',
+                    backgroundColor: 'primary.main',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mx: 'auto',
+                    mb: 3,
+                  }}
+                >
+                  <VerifiedUser sx={{ fontSize: 40, color: 'white' }} />
+                </Box>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                  Quality Guarantee
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  All our products come with a 30-day money-back guarantee and warranty.
                 </Typography>
               </Box>
             </Grid>
@@ -546,121 +585,149 @@ const HomePage: React.FC = () => {
         </Container>
       </Box>
 
-      {/* Testimonials */}
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Typography 
-          variant="h3" 
-          component="h2" 
-          textAlign="center" 
-          gutterBottom
-          sx={{ fontWeight: 'bold', mb: 2 }}
+      {/* Testimonials Section */}
+      <Container maxWidth="lg" sx={{ py: 6 }}>
+        <Typography
+          variant="h3"
+          component="h2"
+          sx={{
+            textAlign: 'center',
+            fontWeight: 'bold',
+            mb: 1,
+          }}
         >
           What Our Customers Say
         </Typography>
-        <Typography 
-          variant="body1" 
-          textAlign="center" 
-          color="text.secondary" 
-          sx={{ mb: 6, maxWidth: 600, mx: 'auto' }}
+        <Typography
+          variant="h6"
+          color="text.secondary"
+          sx={{
+            textAlign: 'center',
+            mb: 5,
+          }}
         >
-          Join thousands of satisfied customers who love shopping with us
+          Don't just take our word for it
         </Typography>
 
         <Grid container spacing={4}>
           {testimonials.map((testimonial, index) => (
             <Grid item xs={12} md={4} key={index}>
-              <Card
+              <Paper
                 elevation={2}
                 sx={{
-                  p: 3,
-                  height: '100%',
+                  p: 4,
                   borderRadius: 3,
-                  transition: 'transform 0.2s',
+                  height: '100%',
+                  transition: 'transform 0.2s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
                   },
                 }}
               >
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
                   <Avatar
                     src={testimonial.avatar}
-                    alt={testimonial.name}
-                    sx={{ width: 56, height: 56, mr: 2 }}
+                    sx={{ width: 60, height: 60, mr: 2 }}
                   />
                   <Box>
-                    <Typography variant="h6" fontWeight="bold">
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                       {testimonial.name}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      {testimonial.location}
+                      {testimonial.role}
                     </Typography>
                   </Box>
                 </Box>
-                
                 <Rating value={testimonial.rating} readOnly sx={{ mb: 2 }} />
-                
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body1" sx={{ fontStyle: 'italic', lineHeight: 1.6 }}>
                   "{testimonial.comment}"
                 </Typography>
-              </Card>
+              </Paper>
             </Grid>
           ))}
         </Grid>
       </Container>
 
-      {/* Newsletter */}
-      <Box sx={{ backgroundColor: 'primary.main', color: 'white', py: 8 }}>
-        <Container maxWidth="md">
+      {/* CTA Section */}
+      <Box
+        sx={{
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          color: 'white',
+          py: 8,
+        }}
+      >
+        <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center' }}>
-            <Email sx={{ fontSize: 60, mb: 2, opacity: 0.8 }} />
-            <Typography variant="h4" gutterBottom fontWeight="bold">
-              Stay Updated
+            <Typography
+              variant="h3"
+              component="h2"
+              sx={{
+                fontWeight: 'bold',
+                mb: 2,
+              }}
+            >
+              Ready to Start Shopping?
             </Typography>
-            <Typography variant="body1" sx={{ mb: 4, opacity: 0.9 }}>
-              Subscribe to our newsletter and get 10% off your first order. 
-              Be the first to know about new products and exclusive deals.
+            <Typography
+              variant="h6"
+              sx={{
+                mb: 4,
+                opacity: 0.9,
+              }}
+            >
+              Join thousands of satisfied customers and discover amazing products
             </Typography>
-            
-            <Box sx={{ maxWidth: 500, mx: 'auto' }}>
-              <TextField
-                fullWidth
-                placeholder="Enter your email address"
-                variant="outlined"
+            <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
+              <Button
+                component={Link}
+                to="/products"
+                variant="contained"
+                size="large"
+                startIcon={<ShoppingCart />}
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'white',
-                    borderRadius: 3,
-                    '& fieldset': { border: 'none' },
-                  }
+                  py: 1.5,
+                  px: 4,
+                  borderRadius: 3,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  backgroundColor: 'white',
+                  color: 'primary.main',
+                  '&:hover': {
+                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                  },
                 }}
-                InputProps={{
-                  endAdornment: (
-                    <Button
-                      variant="contained"
-                      sx={{ 
-                        borderRadius: 2,
-                        px: 3,
-                        backgroundColor: 'secondary.main',
-                        '&:hover': {
-                          backgroundColor: 'secondary.dark',
-                        }
-                      }}
-                    >
-                      Subscribe
-                    </Button>
-                  ),
+              >
+                Browse Products
+              </Button>
+              <Button
+                component={Link}
+                to="/signup"
+                variant="outlined"
+                size="large"
+                sx={{
+                  py: 1.5,
+                  px: 4,
+                  borderRadius: 3,
+                  fontSize: '1.1rem',
+                  fontWeight: 'bold',
+                  textTransform: 'none',
+                  borderColor: 'white',
+                  color: 'white',
+                  '&:hover': {
+                    borderColor: 'white',
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  },
                 }}
-              />
+              >
+                Create Account
+              </Button>
             </Box>
-            
-            <Typography variant="body2" sx={{ mt: 2, opacity: 0.7 }}>
-              * You can unsubscribe at any time. No spam, we promise!
-            </Typography>
           </Box>
         </Container>
       </Box>
     </Box>
-  )
-}
+  );
+};
 
-export default HomePage 
+export default HomePage; 
