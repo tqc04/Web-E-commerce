@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import com.example.project.dto.UserCreateRequest;
 
 @RestController
 @RequestMapping("/api/users")
@@ -50,7 +51,9 @@ public class UserController {
             String firstName = userRequest.get("firstName");
             String lastName = userRequest.get("lastName");
             
-            User createdUser = userService.createUser(username, email, password, firstName, lastName);
+            // Create UserCreateRequest object
+            UserCreateRequest request = new UserCreateRequest(username, email, password, firstName, lastName);
+            User createdUser = userService.createUser(request);
             return ResponseEntity.ok(UserDTO.from(createdUser));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -92,53 +95,6 @@ public class UserController {
     }
 
     /**
-     * Đăng nhập người dùng
-     */
-    @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> loginRequest) {
-        try {
-            String username = loginRequest.get("username");
-            String password = loginRequest.get("password");
-            
-            if (username == null || password == null) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Username and password are required");
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
-            
-            // Find user by username
-            Optional<User> userOpt = userService.findByUsername(username);
-            if (!userOpt.isPresent()) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("error", "User not found");
-                return ResponseEntity.notFound().build();
-            }
-            
-            User user = userOpt.get();
-            
-            // Simple password check (in real app, use password hashing)
-            if (!"password123".equals(password)) {
-                Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put("error", "Invalid password");
-                return ResponseEntity.badRequest().body(errorResponse);
-            }
-            
-            // Create response with token and user info using DTO
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", "jwt_token_" + user.getId() + "_" + System.currentTimeMillis());
-            response.put("user", UserDTO.from(user));
-            response.put("success", true);
-            
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("error", "Login failed: " + e.getMessage());
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
-    }
-
-    /**
      * Đăng ký người dùng mới
      */
     @PostMapping("/register")
@@ -169,7 +125,9 @@ public class UserController {
                 return ResponseEntity.badRequest().body(errorResponse);
             }
             
-            User createdUser = userService.createUser(username, email, password, firstName, lastName);
+            // Create UserCreateRequest object
+            UserCreateRequest request = new UserCreateRequest(username, email, password, firstName, lastName);
+            User createdUser = userService.createUser(request);
             
             Map<String, Object> response = new HashMap<>();
             response.put("user", UserDTO.from(createdUser));

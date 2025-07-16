@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/products")
@@ -27,15 +28,14 @@ public class ProductController {
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getProduct(@PathVariable Long id) {
         try {
-            Product product = productService.findById(id);
-            if (product != null) {
-                return ResponseEntity.ok(ProductDTO.from(product));
+            Optional<Product> productOpt = productService.findById(id);
+            if (productOpt.isPresent()) {
+                return ResponseEntity.ok(ProductDTO.from(productOpt.get()));
             } else {
                 return ResponseEntity.notFound().build();
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.badRequest().build();
         }
     }
 

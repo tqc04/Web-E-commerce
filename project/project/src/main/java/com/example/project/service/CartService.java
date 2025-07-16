@@ -71,7 +71,7 @@ public class CartService {
         }
         
         Product product = productOpt.get();
-        if (!product.isActive()) {
+        if (!product.getIsActive()) {
             throw new RuntimeException("Product is not active");
         }
         
@@ -216,7 +216,7 @@ public class CartService {
         cartItem.setProductPrice(product.getPrice());
         cartItem.setQuantity(quantity);
         cartItem.setStockQuantity(getProductStockQuantity(product.getId()));
-        cartItem.setIsActive(product.isActive());
+        cartItem.setIsActive(product.getIsActive());
         
         // Set category and brand names safely
         try {

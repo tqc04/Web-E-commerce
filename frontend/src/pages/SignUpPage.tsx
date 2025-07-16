@@ -1,355 +1,375 @@
-import React, { useState } from 'react';
-import {
-  Container,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Box,
+import React, { useState } from 'react'
+import { 
+  Container, 
+  Paper, 
+  TextField, 
+  Button, 
+  Typography, 
+  Box, 
   Alert,
-  CircularProgress,
-  Divider,
-  IconButton,
-  Grid,
   Link,
-  InputAdornment
-} from '@mui/material';
-import {
-  Google as GoogleIcon,
-  Facebook as FacebookIcon,
-  Apple as AppleIcon,
-  GitHub as GitHubIcon,
-  Visibility,
-  VisibilityOff,
-  PersonAdd as PersonAddIcon
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { apiService } from '../services/api';
+  InputAdornment,
+  IconButton,
+  FormControlLabel,
+  Checkbox
+} from '@mui/material'
+import { 
+  Visibility, 
+  VisibilityOff, 
+  Person, 
+  Email, 
+  Lock, 
+  Phone 
+} from '@mui/icons-material'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import { apiService } from '../services/api'
+
+interface SignUpFormData {
+  username: string
+  email: string
+  password: string
+  confirmPassword: string
+  firstName: string
+  lastName: string
+  phoneNumber: string
+  agreeToTerms: boolean
+}
 
 const SignUpPage: React.FC = () => {
-  const [formData, setFormData] = useState({
+  const navigate = useNavigate()
+  const [formData, setFormData] = useState<SignUpFormData>({
     username: '',
     email: '',
     password: '',
     confirmPassword: '',
     firstName: '',
-    lastName: ''
-  });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+    lastName: '',
+    phoneNumber: '',
+    agreeToTerms: false
+  })
+  
+  const [errors, setErrors] = useState<Partial<SignUpFormData>>({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const validateForm = (): boolean => {
+    const newErrors: Partial<SignUpFormData> = {}
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    // Validation
-    if (!formData.username || !formData.email || !formData.password) {
-      setError('Please fill in all required fields');
-      return;
+    // Username validation
+    if (!formData.username.trim()) {
+      newErrors.username = 'Username is required'
+    } else if (formData.username.length < 3) {
+      newErrors.username = 'Username must be at least 3 characters'
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email is required'
+    } else if (!emailRegex.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email'
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters');
-      return;
+    // Password validation
+    if (!formData.password) {
+      newErrors.password = 'Password is required'
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters'
     }
 
-    setIsLoading(true);
+    // Confirm password validation
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password'
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match'
+    }
+
+    // Name validation
+    if (!formData.firstName.trim()) {
+      newErrors.firstName = 'First name is required'
+    }
+    if (!formData.lastName.trim()) {
+      newErrors.lastName = 'Last name is required'
+    }
+
+    // Phone validation (optional but if provided, should be valid)
+    if (formData.phoneNumber && !/^\+?[\d\s-()]+$/.test(formData.phoneNumber)) {
+      newErrors.phoneNumber = 'Please enter a valid phone number'
+    }
+
+    // Terms agreement
+    if (!formData.agreeToTerms) {
+      newErrors.agreeToTerms = 'You must agree to the terms and conditions'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleInputChange = (field: keyof SignUpFormData) => (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = field === 'agreeToTerms' ? event.target.checked : event.target.value
+    setFormData(prev => ({ ...prev, [field]: value }))
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: undefined }))
+    }
+  }
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    
+    if (!validateForm()) {
+      return
+    }
+
+    setIsLoading(true)
+    setMessage(null)
 
     try {
-      const response = await apiService.post('/users/register', {
+      const response = await apiService.register({
         username: formData.username,
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
-        lastName: formData.lastName
-      });
+        lastName: formData.lastName,
+        phoneNumber: formData.phoneNumber || undefined
+      })
 
       if (response.success) {
-        setSuccess('Account created successfully! You can now sign in.');
+        setMessage({
+          type: 'success',
+          text: 'Registration successful! Please check your email for verification.'
+        })
+        
+        // Redirect to login after 3 seconds
         setTimeout(() => {
-          navigate('/login');
-        }, 2000);
+          navigate('/login')
+        }, 3000)
       } else {
-        setError(response.error || 'Registration failed');
+        setMessage({
+          type: 'error',
+          text: response.message || 'Registration failed'
+        })
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Registration failed');
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Registration failed. Please try again.'
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
-
-  const handleSocialSignUp = (provider: string) => {
-    setError(`${provider} sign up coming soon!`);
-  };
+  }
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        py: 4
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
-          }}
-        >
-          <Box textAlign="center" mb={4}>
-            <PersonAddIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-              Create Account
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Join our community and start shopping!
-            </Typography>
+    <Container maxWidth="sm" sx={{ mt: 4, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Box textAlign="center" mb={3}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            Create Account
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Join our e-commerce platform
+          </Typography>
+        </Box>
+
+        {message && (
+          <Alert severity={message.type} sx={{ mb: 3 }}>
+            {message.text}
+          </Alert>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit}>
+          <Box display="flex" gap={2} mb={2}>
+            <TextField
+              fullWidth
+              label="First Name"
+              value={formData.firstName}
+              onChange={handleInputChange('firstName')}
+              error={!!errors.firstName}
+              helperText={errors.firstName}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Person />
+                  </InputAdornment>
+                ),
+              }}
+            />
+            <TextField
+              fullWidth
+              label="Last Name"
+              value={formData.lastName}
+              onChange={handleInputChange('lastName')}
+              error={!!errors.lastName}
+              helperText={errors.lastName}
+            />
           </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+          <TextField
+            fullWidth
+            label="Username"
+            value={formData.username}
+            onChange={handleInputChange('username')}
+            error={!!errors.username}
+            helperText={errors.username}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Person />
+                </InputAdornment>
+              ),
+            }}
+          />
 
-          {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              {success}
-            </Alert>
-          )}
+          <TextField
+            fullWidth
+            label="Email Address"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange('email')}
+            error={!!errors.email}
+            helperText={errors.email}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Email />
+                </InputAdornment>
+              ),
+            }}
+          />
 
-          <Box component="form" onSubmit={handleSubmit}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  name="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  name="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  variant="outlined"
-                  sx={{ mb: 2 }}
-                />
-              </Grid>
-            </Grid>
+          <TextField
+            fullWidth
+            label="Phone Number (Optional)"
+            value={formData.phoneNumber}
+            onChange={handleInputChange('phoneNumber')}
+            error={!!errors.phoneNumber}
+            helperText={errors.phoneNumber || 'Optional field'}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Phone />
+                </InputAdornment>
+              ),
+            }}
+          />
 
-            <TextField
-              fullWidth
-              label="Username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              variant="outlined"
-              required
-              sx={{ mb: 2 }}
-            />
+          <TextField
+            fullWidth
+            label="Password"
+            type={showPassword ? 'text' : 'password'}
+            value={formData.password}
+            onChange={handleInputChange('password')}
+            error={!!errors.password}
+            helperText={errors.password}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Lock />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowPassword(!showPassword)}
+                    edge="end"
+                  >
+                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
 
-            <TextField
-              fullWidth
-              label="Email"
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              variant="outlined"
-              required
-              sx={{ mb: 2 }}
-            />
+          <TextField
+            fullWidth
+            label="Confirm Password"
+            type={showConfirmPassword ? 'text' : 'password'}
+            value={formData.confirmPassword}
+            onChange={handleInputChange('confirmPassword')}
+            error={!!errors.confirmPassword}
+            helperText={errors.confirmPassword}
+            sx={{ mb: 2 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Lock />
+                </InputAdornment>
+              ),
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    edge="end"
+                  >
+                    {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                  </IconButton>
+                </InputAdornment>
+              ),
+            }}
+          />
 
-            <TextField
-              fullWidth
-              label="Password"
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              value={formData.password}
-              onChange={handleChange}
-              variant="outlined"
-              required
-              sx={{ mb: 2 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowPassword(!showPassword)}
-                      edge="end"
-                    >
-                      {showPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-
-            <TextField
-              fullWidth
-              label="Confirm Password"
-              name="confirmPassword"
-              type={showConfirmPassword ? 'text' : 'password'}
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              variant="outlined"
-              required
-              sx={{ mb: 3 }}
-              InputProps={{
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      edge="end"
-                    >
-                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
-                    </IconButton>
-                  </InputAdornment>
-                )
-              }}
-            />
-
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              disabled={isLoading}
-              sx={{
-                mb: 3,
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                borderRadius: 2,
-                background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #5a6fd8, #6a3f8a)',
-                }
-              }}
-              size="large"
-              startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
-            >
-              {isLoading ? 'Creating Account...' : 'Create Account'}
-            </Button>
-
-            <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                Or sign up with
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={formData.agreeToTerms}
+                onChange={handleInputChange('agreeToTerms')}
+                color="primary"
+              />
+            }
+            label={
+              <Typography variant="body2">
+                I agree to the{' '}
+                <Link component={RouterLink} to="/terms" color="primary">
+                  Terms and Conditions
+                </Link>{' '}
+                and{' '}
+                <Link component={RouterLink} to="/privacy" color="primary">
+                  Privacy Policy
+                </Link>
               </Typography>
-            </Divider>
+            }
+            sx={{ mb: 2 }}
+          />
+          {errors.agreeToTerms && (
+            <Typography variant="caption" color="error" display="block" sx={{ mt: -1, mb: 2 }}>
+              {errors.agreeToTerms}
+            </Typography>
+          )}
 
-            <Grid container spacing={2} sx={{ mb: 3 }}>
-              <Grid item xs={3}>
-                <IconButton
-                  fullWidth
-                  onClick={() => handleSocialSignUp('Google')}
-                  sx={{
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    py: 1
-                  }}
-                >
-                  <GoogleIcon />
-                </IconButton>
-              </Grid>
-              <Grid item xs={3}>
-                <IconButton
-                  fullWidth
-                  onClick={() => handleSocialSignUp('Facebook')}
-                  sx={{
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    py: 1
-                  }}
-                >
-                  <FacebookIcon />
-                </IconButton>
-              </Grid>
-              <Grid item xs={3}>
-                <IconButton
-                  fullWidth
-                  onClick={() => handleSocialSignUp('Apple')}
-                  sx={{
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    py: 1
-                  }}
-                >
-                  <AppleIcon />
-                </IconButton>
-              </Grid>
-              <Grid item xs={3}>
-                <IconButton
-                  fullWidth
-                  onClick={() => handleSocialSignUp('GitHub')}
-                  sx={{
-                    border: 1,
-                    borderColor: 'divider',
-                    borderRadius: 2,
-                    py: 1
-                  }}
-                >
-                  <GitHubIcon />
-                </IconButton>
-              </Grid>
-            </Grid>
+          <Button
+            type="submit"
+            fullWidth
+            variant="contained"
+            size="large"
+            disabled={isLoading}
+            sx={{ mb: 2 }}
+          >
+            {isLoading ? 'Creating Account...' : 'Create Account'}
+          </Button>
 
-            {/* Sign In Link */}
-            <Typography variant="body2" color="text.secondary" textAlign="center">
+          <Box textAlign="center">
+            <Typography variant="body2">
               Already have an account?{' '}
-              <Link
-                onClick={() => navigate('/login')}
-                sx={{
-                  color: 'primary.main',
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  '&:hover': {
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                Sign in here
+              <Link component={RouterLink} to="/login" color="primary">
+                Sign In
               </Link>
             </Typography>
           </Box>
-        </Paper>
-      </Container>
-    </Box>
-  );
-};
+        </Box>
+      </Paper>
+    </Container>
+  )
+}
 
-export default SignUpPage; 
+export default SignUpPage 

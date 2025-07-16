@@ -239,13 +239,12 @@ public class AIEnterpriseService {
         profile.append("Active User: ").append(user.isActive()).append("\n");
         
         // Add behavior analysis
-        Map<String, Long> behaviorCounts = user.getBehaviors().stream()
-            .collect(Collectors.groupingBy(
-                behavior -> behavior.getBehaviorType().name(),
-                Collectors.counting()
-            ));
-        
-        profile.append("Behavior Summary: ").append(behaviorCounts.toString()).append("\n");
+        String behaviors = user.getBehaviors();
+        if (behaviors != null && !behaviors.isEmpty()) {
+            profile.append("User Behaviors: ").append(behaviors).append("\n");
+        } else {
+            profile.append("User Behaviors: None recorded\n");
+        }
         
         return profile.toString();
     }

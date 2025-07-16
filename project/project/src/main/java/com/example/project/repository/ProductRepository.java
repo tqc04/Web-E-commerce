@@ -45,7 +45,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.purchaseCount >= :minPurchases")
     List<Product> findByMinPurchases(@Param("minPurchases") Long minPurchases);
     
-    @Query("SELECT p FROM Product p WHERE p.aiContentScore >= :minScore")
+    @Query("SELECT p FROM Product p WHERE p.recommendationScore >= :minScore")
     List<Product> findByMinAIContentScore(@Param("minScore") Double minScore);
     
     @Query("SELECT p FROM Product p WHERE p.recommendationScore >= :minScore")
@@ -90,15 +90,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
     List<Product> findActiveProductsWithCategoryAndBrand();
     
-    @Query("SELECT new com.example.project.dto.ProductSimpleResponse(" +
-           "p.id, p.name, p.description, p.sku, " +
-           "p.price, p.originalPrice, p.discountPercentage, " +
-           "p.isActive, p.isFeatured, p.isDigital, " +
-           "p.averageRating, p.reviewCount, p.viewCount, p.purchaseCount, " +
-           "p.createdAt, p.updatedAt, " +
-           "p.category.id, p.category.name, p.brand.id, p.brand.name) " +
-           "FROM Product p JOIN p.category JOIN p.brand WHERE p.isActive = true")
-    List<ProductSimpleResponse> findActiveProductsAsDTO();
+    @Query("SELECT p FROM Product p JOIN p.category JOIN p.brand WHERE p.isActive = true")
+    List<Product> findActiveProductsAsDTO();
 
     long countByIsActiveTrue();
 

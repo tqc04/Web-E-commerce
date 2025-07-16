@@ -16,7 +16,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     Optional<User> findByUsername(String username);
     
-    Optional<User> findByUsernameOrEmail(String username, String email);
+    @Query("SELECT u FROM User u WHERE u.username = :usernameOrEmail OR u.email = :usernameOrEmail")
+    Optional<User> findByUsernameOrEmail(@Param("usernameOrEmail") String usernameOrEmail);
+    
+    Optional<User> findByPasswordResetToken(String passwordResetToken);
+    
+    Optional<User> findByEmailVerificationToken(String emailVerificationToken);
     
     List<User> findByIsActiveTrue();
     
@@ -35,8 +40,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.chatbotEnabled = true")
     List<User> findChatbotEnabledUsers();
     
-    @Query("SELECT u FROM User u WHERE u.provider = :provider")
-    List<User> findByProvider(@Param("provider") String provider);
+    @Query("SELECT u FROM User u WHERE u.providerId = :providerId")
+    List<User> findByProviderId(@Param("providerId") String providerId);
     
     @Query("SELECT u FROM User u WHERE u.isEmailVerified = true")
     List<User> findEmailVerifiedUsers();

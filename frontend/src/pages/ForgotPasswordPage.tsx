@@ -1,191 +1,300 @@
-import React, { useState } from 'react';
-import {
-  Container,
-  Paper,
-  TextField,
-  Button,
-  Typography,
-  Box,
+import React, { useState } from 'react'
+import { 
+  Container, 
+  Paper, 
+  TextField, 
+  Button, 
+  Typography, 
+  Box, 
   Alert,
-  CircularProgress,
-  Link
-} from '@mui/material';
-import {
-  LockReset as LockResetIcon,
-  ArrowBack as ArrowBackIcon,
-  Email as EmailIcon
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+  Link,
+  InputAdornment,
+  Stepper,
+  Step,
+  StepLabel,
+  IconButton
+} from '@mui/material'
+import { 
+  Email, 
+  Lock, 
+  ArrowBack,
+  Visibility,
+  VisibilityOff 
+} from '@mui/icons-material'
+import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
+import { apiService } from '../services/api'
+
+type Step = 'email' | 'reset'
 
 const ForgotPasswordPage: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const resetToken = searchParams.get('token')
+  
+  const [currentStep, setCurrentStep] = useState<Step>(resetToken ? 'reset' : 'email')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setSuccess('');
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
 
-    if (!email) {
-      setError('Please enter your email address');
-      return;
+  const validatePassword = (password: string): boolean => {
+    return password.length >= 6
+  }
+
+  const handleEmailSubmit = async (event: React.FormEvent) => {
+    event.preventDefault()
+    
+    if (!email.trim()) {
+      setMessage({ type: 'error', text: 'Email is required' })
+      return
+    }
+    
+    if (!validateEmail(email)) {
+      setMessage({ type: 'error', text: 'Please enter a valid email address' })
+      return
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      setError('Please enter a valid email address');
-      return;
-    }
-
-    setIsLoading(true);
+    setIsLoading(true)
+    setMessage(null)
 
     try {
-      // Simulate API call for password reset
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await apiService.forgotPassword(email)
       
-      setSuccess('Password reset instructions have been sent to your email address.');
-      
-      // In real implementation, you would call:
-      // await apiService.post('/users/forgot-password', { email });
-      
-    } catch (err: any) {
-      setError('Failed to send reset email. Please try again.');
+      if (response.success) {
+        setMessage({
+          type: 'success',
+          text: 'Password reset instructions have been sent to your email. Please check your inbox.'
+        })
+      } else {
+        setMessage({
+          type: 'error',
+          text: response.message || 'Failed to send reset email'
+        })
+      }
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Failed to send reset email. Please try again.'
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
+
+  const handlePasswordReset = async (event: React.FormEvent) => {
+    event.preventDefault()
+    
+    if (!password.trim()) {
+      setMessage({ type: 'error', text: 'Password is required' })
+      return
+    }
+    
+    if (!validatePassword(password)) {
+      setMessage({ type: 'error', text: 'Password must be at least 6 characters long' })
+      return
+    }
+    
+    if (password !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' })
+      return
+    }
+
+    if (!resetToken) {
+      setMessage({ type: 'error', text: 'Invalid reset token' })
+      return
+    }
+
+    setIsLoading(true)
+    setMessage(null)
+
+    try {
+      const response = await apiService.resetPassword(resetToken, password)
+      
+      if (response.success) {
+        setMessage({
+          type: 'success',
+          text: 'Password reset successfully! You can now login with your new password.'
+        })
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          navigate('/login')
+        }, 3000)
+      } else {
+        setMessage({
+          type: 'error',
+          text: response.message || 'Failed to reset password'
+        })
+      }
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Failed to reset password. Please try again.'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const steps = ['Enter Email', 'Reset Password']
+  const activeStep = currentStep === 'email' ? 0 : 1
 
   return (
-    <Box
-      sx={{
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        py: 4
-      }}
-    >
-      <Container maxWidth="sm">
-        <Paper
-          elevation={24}
-          sx={{
-            p: 4,
-            borderRadius: 3,
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(10px)',
-            border: '1px solid rgba(255, 255, 255, 0.2)'
-          }}
-        >
-          <Box textAlign="center" mb={4}>
-            <LockResetIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-            <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>
-              Reset Password
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Enter your email address and we'll send you instructions to reset your password.
-            </Typography>
-          </Box>
+    <Container maxWidth="sm" sx={{ mt: 4, mb: 4 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
+        <Box textAlign="center" mb={3}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            {currentStep === 'email' ? 'Forgot Password' : 'Reset Password'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {currentStep === 'email' 
+              ? 'Enter your email address and we\'ll send you instructions to reset your password'
+              : 'Enter your new password'
+            }
+          </Typography>
+        </Box>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+        <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
+          {steps.map((label) => (
+            <Step key={label}>
+              <StepLabel>{label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
 
-          {success && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              {success}
-            </Alert>
-          )}
+        {message && (
+          <Alert severity={message.type} sx={{ mb: 3 }}>
+            {message.text}
+          </Alert>
+        )}
 
-          <Box component="form" onSubmit={handleSubmit}>
+        {currentStep === 'email' ? (
+          <Box component="form" onSubmit={handleEmailSubmit}>
             <TextField
               fullWidth
               label="Email Address"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              variant="outlined"
-              required
               sx={{ mb: 3 }}
               InputProps={{
                 startAdornment: (
-                  <EmailIcon sx={{ color: 'text.secondary', mr: 1 }} />
-                )
+                  <InputAdornment position="start">
+                    <Email />
+                  </InputAdornment>
+                ),
               }}
+              placeholder="Enter your registered email address"
             />
 
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              disabled={isLoading}
-              sx={{
-                mb: 3,
-                py: 1.5,
-                fontSize: '1.1rem',
-                fontWeight: 'bold',
-                borderRadius: 2,
-                background: 'linear-gradient(45deg, #667eea, #764ba2)',
-                '&:hover': {
-                  background: 'linear-gradient(45deg, #5a6fd8, #6a3f8a)',
-                }
-              }}
               size="large"
-              startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : null}
+              disabled={isLoading}
+              sx={{ mb: 3 }}
             >
               {isLoading ? 'Sending...' : 'Send Reset Instructions'}
             </Button>
 
-            {/* Back to Login Link */}
-            <Typography variant="body2" color="text.secondary" textAlign="center">
-              <Link
-                onClick={() => navigate('/login')}
-                sx={{
-                  color: 'primary.main',
-                  textDecoration: 'none',
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  '&:hover': {
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                <ArrowBackIcon sx={{ fontSize: 16, mr: 0.5 }} />
-                Back to Sign In
+            <Box textAlign="center">
+              <Link component={RouterLink} to="/login" color="primary">
+                <Box display="flex" alignItems="center" justifyContent="center">
+                  <ArrowBack sx={{ mr: 1, fontSize: 16 }} />
+                  Back to Login
+                </Box>
               </Link>
-            </Typography>
+            </Box>
           </Box>
+        ) : (
+          <Box component="form" onSubmit={handlePasswordReset}>
+            <TextField
+              fullWidth
+              label="New Password"
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                      edge="end"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              placeholder="Enter your new password"
+            />
 
-          {/* Additional Information */}
-          <Box mt={4} p={2} bgcolor="rgba(0, 0, 0, 0.02)" borderRadius={2}>
-            <Typography variant="caption" color="text.secondary" display="block" textAlign="center">
-              <strong>Having trouble?</strong><br />
-              If you don't receive an email within a few minutes, check your spam folder or{' '}
-              <Link
-                href="mailto:support@example.com"
-                sx={{
-                  color: 'primary.main',
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline'
-                  }
-                }}
-              >
-                contact support
+            <TextField
+              fullWidth
+              label="Confirm New Password"
+              type={showConfirmPassword ? 'text' : 'password'}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              sx={{ mb: 3 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      edge="end"
+                    >
+                      {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+              placeholder="Confirm your new password"
+            />
+
+            <Button
+              type="submit"
+              fullWidth
+              variant="contained"
+              size="large"
+              disabled={isLoading}
+              sx={{ mb: 3 }}
+            >
+              {isLoading ? 'Resetting...' : 'Reset Password'}
+            </Button>
+
+            <Box textAlign="center">
+              <Link component={RouterLink} to="/login" color="primary">
+                <Box display="flex" alignItems="center" justifyContent="center">
+                  <ArrowBack sx={{ mr: 1, fontSize: 16 }} />
+                  Back to Login
+                </Box>
               </Link>
-            </Typography>
+            </Box>
           </Box>
-        </Paper>
-      </Container>
-    </Box>
-  );
-};
+        )}
+      </Paper>
+    </Container>
+  )
+}
 
-export default ForgotPasswordPage; 
+export default ForgotPasswordPage 

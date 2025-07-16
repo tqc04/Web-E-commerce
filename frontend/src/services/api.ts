@@ -71,6 +71,7 @@ export interface User {
 
 export interface Order {
   id: number
+  orderNumber: string
   userId: number
   status: string
   totalAmount: number
@@ -182,6 +183,22 @@ class ApiService {
       }
     } catch (error) {
       console.error('Failed to create order:', error)
+      throw error
+    }
+  }
+
+  async cancelOrder(orderId: number, reason: string): Promise<ApiResponse<void>> {
+    try {
+      const response = await apiClient.delete(`/orders/${orderId}`, {
+        data: { reason }
+      })
+      return {
+        data: response.data,
+        success: true,
+        message: 'Order cancelled successfully',
+      }
+    } catch (error) {
+      console.error('Failed to cancel order:', error)
       throw error
     }
   }
@@ -343,71 +360,12 @@ class ApiService {
     }
   }
 
-  // Chatbot API
-  async sendChatMessage(sessionId: string, message: string): Promise<ApiResponse<ChatMessage>> {
-    try {
-      const response = await apiClient.post('/chatbot/chat', {
-        sessionId,
-        message,
-      })
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to send chat message:', error)
-      throw error
-    }
-  }
-
-  async createChatSession(): Promise<ApiResponse<{ sessionId: string }>> {
-    try {
-      const response = await apiClient.post('/chatbot/session')
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to create chat session:', error)
-      throw error
-    }
-  }
-
-  // Dashboard API
-  async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
-    try {
-      const response = await apiClient.get('/admin/dashboard/stats')
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to fetch dashboard stats:', error)
-      throw error
-    }
-  }
-
-  // Recommendations API
-  async getRecommendations(userId?: number): Promise<ApiResponse<Product[]>> {
-    try {
-      const url = userId ? `/recommendations?userId=${userId}` : '/recommendations'
-      const response = await apiClient.get(url)
-      return {
-        data: response.data,
-        success: true,
-      }
-    } catch (error) {
-      console.error('Failed to fetch recommendations:', error)
-      throw error
-    }
-  }
-
   /**
-   * Real login API call
+   * User login
    */
   async login(username: string, password: string): Promise<ApiResponse<{ token: string, user: User }>> {
     try {
-      const response = await apiClient.post('/users/login', {
+      const response = await apiClient.post('/auth/login', {
         username,
         password
       })
@@ -417,17 +375,237 @@ class ApiService {
           token: response.data.token,
           user: response.data.user
         },
-        message: 'Login successful',
-        success: true
+        message: response.data.message || 'Login successful',
+        success: response.data.success || true
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login failed:', error)
-      throw new Error('Invalid username or password')
+      throw error
     }
   }
 
   /**
-   * Mock logout
+   * User registration
+   */
+  async register(userData: {
+    username: string
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    phoneNumber?: string
+  }): Promise<ApiResponse<{ user: User }>> {
+    try {
+      const response = await apiClient.post('/auth/register', userData)
+      
+      return {
+        data: {
+          user: response.data.user
+        },
+        message: response.data.message || 'Registration successful',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Registration failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Forgot password - Send reset email
+   */
+  async forgotPassword(email: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/forgot-password', { email })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Reset email sent',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Forgot password failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Reset password with token
+   */
+  async resetPassword(token: string, password: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/reset-password', { token, password })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Password reset successful',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Password reset failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Verify email with token
+   */
+  async verifyEmail(token: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/verify-email', { token })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Email verified successfully',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Email verification failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Change password (authenticated user)
+   */
+  async changePassword(currentPassword: string, newPassword: string): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/auth/change-password', {
+        currentPassword,
+        newPassword
+      })
+      
+      return {
+        data: response.data,
+        message: response.data.message || 'Password changed successfully',
+        success: response.data.success || true
+      }
+    } catch (error: any) {
+      console.error('Password change failed:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get user profile
+   */
+  async getUserProfile(): Promise<ApiResponse<User>> {
+    try {
+      const response = await apiClient.get('/users/profile')
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch user profile:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Update user profile
+   */
+  async updateUserProfile(userData: Partial<User>): Promise<ApiResponse<User>> {
+    try {
+      const response = await apiClient.put('/users/profile', userData)
+      return {
+        data: response.data,
+        message: 'Profile updated successfully',
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to update user profile:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Add product to favorites
+   */
+  async addToFavorites(productId: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post(`/users/favorites/${productId}`)
+      return {
+        data: response.data,
+        message: 'Added to favorites',
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to add to favorites:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Remove product from favorites
+   */
+  async removeFromFavorites(productId: number): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.delete(`/users/favorites/${productId}`)
+      return {
+        data: response.data,
+        message: 'Removed from favorites',
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to remove from favorites:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get user favorites
+   */
+  async getFavorites(): Promise<ApiResponse<Product[]>> {
+    try {
+      const response = await apiClient.get('/users/favorites')
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch favorites:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Send AI chat message
+   */
+  async sendChatMessage(message: string, sessionId?: string): Promise<ApiResponse<ChatMessage>> {
+    try {
+      const response = await apiClient.post('/chatbot/chat', {
+        message,
+        sessionId
+      })
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to send chat message:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Get chat history
+   */
+  async getChatHistory(sessionId: string): Promise<ApiResponse<ChatMessage[]>> {
+    try {
+      const response = await apiClient.get(`/chatbot/history/${sessionId}`)
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to fetch chat history:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Logout
    */
   async logout(): Promise<void> {
     // Clear any stored tokens

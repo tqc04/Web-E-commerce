@@ -201,14 +201,14 @@ public class ChatbotService {
     }
     
     /**
-     * Build user profile for personalization
+     * Build user profile context for AI
      */
     private String buildUserProfile(User user) {
         StringBuilder profile = new StringBuilder();
         
         profile.append("User: ").append(user.getFullName()).append("\n");
-        profile.append("Interests: ").append(String.join(", ", user.getInterests())).append("\n");
-        profile.append("Preferences: ").append(String.join(", ", user.getPreferences())).append("\n");
+        profile.append("Interests: ").append(user.getInterests() != null ? user.getInterests() : "None").append("\n");
+        profile.append("Preferences: ").append(user.getPreferences() != null ? user.getPreferences() : "None").append("\n");
         profile.append("Previous Orders: ").append(user.getOrders().size()).append("\n");
         
         return profile.toString();

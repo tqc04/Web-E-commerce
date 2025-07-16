@@ -1,145 +1,72 @@
 import React from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { Box } from '@mui/material'
+import { Box, CssBaseline, ThemeProvider } from '@mui/material'
 
-// Components
+import { CartProvider } from './contexts/CartContext'
+import { AuthProvider } from './contexts/AuthContext'
+import theme from './theme/theme'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
-import ProtectedRoute from './components/ProtectedRoute'
-
-// Pages
 import HomePage from './pages/HomePage'
 import ProductsPage from './pages/ProductsPage'
-import ChatbotPage from './pages/ChatbotPage'
+import ShoppingCartPage from './pages/ShoppingCartPage'
+import CheckoutPage from './pages/CheckoutPage'
 import OrdersPage from './pages/OrdersPage'
 import AdminPage from './pages/AdminPage'
-import AdminDashboard from './pages/AdminDashboard'
 import LoginPage from './pages/LoginPage'
-import ShoppingCartPage from './pages/ShoppingCartPage'
-import FavoritesPage from './pages/FavoritesPage'
-import SupportPage from './pages/SupportPage'
+import SignUpPage from './pages/SignUpPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import ProfilePage from './pages/ProfilePage'
+import FavoritesPage from './pages/FavoritesPage'
+import WishlistPage from './pages/WishlistPage'
+import ComparePage from './pages/ComparePage'
+import ReviewsPage from './pages/ReviewsPage'
+import ProductDetailPage from './pages/ProductDetailPage'
+import ChatbotPage from './pages/ChatbotPage'
+import SupportPage from './pages/SupportPage'
 
-// Context
-import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { CartProvider } from './contexts/CartContext'
-
-const AppContent: React.FC = () => {
-  const { user } = useAuth()
-  
+function App() {
   return (
-    <CartProvider userId={user?.id}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-        <Navbar />
-        
-        <Box component="main" sx={{ flexGrow: 1, paddingTop: '64px' }}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/support" element={<SupportPage />} />
-            
-            {/* Protected Routes */}
-            <Route path="/" element={
-              <ProtectedRoute requireAuth={false}>
-                <HomePage />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/products" element={
-              <ProtectedRoute requireAuth={false}>
-                <ProductsPage />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/cart" element={
-              <ProtectedRoute requireAuth={false}>
-                <ShoppingCartPage />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/favorites" element={
-              <ProtectedRoute requireAuth={true}>
-                <FavoritesPage />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/profile" element={
-              <ProtectedRoute requireAuth={true}>
-                <ProfilePage />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/chatbot" element={
-              <ProtectedRoute requireAuth={true}>
-                <ChatbotPage />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/orders" element={
-              <ProtectedRoute requireAuth={true}>
-                <OrdersPage />
-              </ProtectedRoute>
-            } />
-            
-            {/* Admin Routes */}
-            <Route path="/admin" element={
-              <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                <AdminPage />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="/admin/dashboard" element={
-              <ProtectedRoute requireAuth={true} requireAdmin={true}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-
-            {/* 404 Fallback */}
-            <Route path="*" element={
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                minHeight: '50vh',
-                textAlign: 'center',
-                p: 4
-              }}>
-                <Box sx={{ fontSize: '6rem', mb: 2 }}>😞</Box>
-                <Box sx={{ fontSize: '2rem', fontWeight: 'bold', mb: 1 }}>
-                  404 - Page Not Found
-                </Box>
-                <Box sx={{ color: 'text.secondary', mb: 3 }}>
-                  The page you're looking for doesn't exist.
-                </Box>
-                <Box 
-                  component="a" 
-                  href="/"
-                  sx={{
-                    color: 'primary.main',
-                    textDecoration: 'none',
-                    '&:hover': { textDecoration: 'underline' }
-                  }}
-                >
-                  ← Back to Home
-                </Box>
-              </Box>
-            } />
-          </Routes>
-        </Box>
-        
-        <Footer />
-      </Box>
-    </CartProvider>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <AuthProvider>
+        <CartProvider>
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            minHeight: '100vh'
+          }}>
+            <Navbar />
+            <Box component="main" sx={{ 
+              flexGrow: 1, 
+              py: { xs: 2, sm: 3, md: 4 }
+            }}>
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/products" element={<ProductsPage />} />
+                <Route path="/products/:productId" element={<ProductDetailPage />} />
+                <Route path="/cart" element={<ShoppingCartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/orders" element={<OrdersPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignUpPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/favorites" element={<FavoritesPage />} />
+                <Route path="/wishlist" element={<WishlistPage />} />
+                <Route path="/compare" element={<ComparePage />} />
+                <Route path="/reviews" element={<ReviewsPage />} />
+                <Route path="/ai-assistant" element={<ChatbotPage />} />
+                <Route path="/support" element={<SupportPage />} />
+              </Routes>
+            </Box>
+            <Footer />
+          </Box>
+        </CartProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
-const App: React.FC = () => {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  )
-}
-
-export default App 
+export default App

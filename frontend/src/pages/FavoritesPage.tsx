@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react'
 import {
-  Box,
   Container,
   Typography,
   Grid,
@@ -9,356 +8,394 @@ import {
   CardContent,
   CardActions,
   Button,
+  Box,
+  Alert,
   IconButton,
   Chip,
-  Rating,
-  Tooltip,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Divider,
-  Alert,
-  Skeleton
+  Skeleton,
+  Fab,
+  Tooltip
 } from '@mui/material'
 import {
   Favorite,
   FavoriteBorder,
   ShoppingCart,
   Share,
-  Remove,
-  FilterList,
-  Sort,
-  Search
+  Visibility,
+  Delete,
+  FilterList
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
+import { useCart } from '../contexts/CartContext'
+import { apiService } from '../services/api'
 
-interface FavoriteProduct {
+interface Product {
   id: number
   name: string
+  description: string
   price: number
-  originalPrice?: number
-  image: string
+  imageUrl?: string
   category: string
   brand: string
-  rating: number
-  reviewCount: number
-  inStock: boolean
-  addedDate: string
-  discount?: number
+  stockQuantity: number
+  rating?: number
+  createdAt: string
+  updatedAt: string
 }
 
 const FavoritesPage: React.FC = () => {
   const navigate = useNavigate()
-  const [favorites, setFavorites] = useState<FavoriteProduct[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('dateAdded')
-  const [filterCategory, setFilterCategory] = useState('all')
+  const { isAuthenticated } = useAuth()
+  const { addToCart } = useCart()
+  
+  const [favorites, setFavorites] = useState<Product[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Load favorites data (implement API call here)
   useEffect(() => {
-    // For now, show empty favorites - implement real API call later
-    setFavorites([])
-    setLoading(false)
-  }, [])
-
-  const removeFromFavorites = (productId: number) => {
-    setFavorites(prev => prev.filter(item => item.id !== productId))
-  }
-
-  const addToCart = (product: FavoriteProduct) => {
-    // Add to cart logic here
-    console.log('Added to cart:', product.name)
-  }
-
-  const shareProduct = (product: FavoriteProduct) => {
-    if (navigator.share) {
-      navigator.share({
-        title: product.name,
-        text: `Check out this amazing product: ${product.name}`,
-        url: window.location.origin + `/products/${product.id}`
-      })
+    if (isAuthenticated) {
+      loadFavorites()
     } else {
-      navigator.clipboard.writeText(window.location.origin + `/products/${product.id}`)
+      setIsLoading(false)
+    }
+  }, [isAuthenticated])
+
+  const loadFavorites = async () => {
+    try {
+      setIsLoading(true)
+      const response = await apiService.getFavorites()
+      
+      if (response.success) {
+        setFavorites(response.data || [])
+      }
+    } catch (error: any) {
+      console.error('Failed to load favorites:', error)
+      setMessage({
+        type: 'error',
+        text: 'Failed to load favorites. Please try again.'
+      })
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  const filteredAndSortedFavorites = favorites
-    .filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           item.brand.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchesCategory = filterCategory === 'all' || item.category === filterCategory
-      return matchesSearch && matchesCategory
-    })
-    .sort((a, b) => {
-      switch (sortBy) {
-        case 'priceAsc':
-          return a.price - b.price
-        case 'priceDesc':
-          return b.price - a.price
-        case 'rating':
-          return b.rating - a.rating
-        case 'name':
-          return a.name.localeCompare(b.name)
-        case 'dateAdded':
-        default:
-          return new Date(b.addedDate).getTime() - new Date(a.addedDate).getTime()
+  const handleRemoveFromFavorites = async (productId: number) => {
+    try {
+      const response = await apiService.removeFromFavorites(productId)
+      
+      if (response.success) {
+        setFavorites(prev => prev.filter(product => product.id !== productId))
+        setMessage({
+          type: 'success',
+          text: 'Product removed from favorites'
+        })
+        
+        // Clear message after 3 seconds
+        setTimeout(() => setMessage(null), 3000)
       }
-    })
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Failed to remove from favorites'
+      })
+    }
+  }
 
-  const categories = ['all', ...Array.from(new Set(favorites.map(item => item.category)))]
+  const handleAddToCart = async (product: Product) => {
+    try {
+      if (product.stockQuantity <= 0) {
+        setMessage({
+          type: 'error',
+          text: 'This product is out of stock'
+        })
+        return
+      }
 
-  const formatPrice = (price: number) => `$${price.toFixed(2)}`
+      await addToCart(product.id, 1)
+      setMessage({
+        type: 'success',
+        text: `${product.name} added to cart`
+      })
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(null), 3000)
+    } catch (error: any) {
+      setMessage({
+        type: 'error',
+        text: error.response?.data?.message || 'Failed to add to cart'
+      })
+    }
+  }
+
+  const handleProductClick = (productId: number) => {
+    navigate(`/products/${productId}`)
+  }
+
+  const handleShareProduct = (product: Product) => {
+    if (navigator.share) {
+      navigator.share({
+        title: product.name,
+        text: product.description,
+        url: `${window.location.origin}/products/${product.id}`
+      })
+    } else {
+      // Fallback for browsers that don't support Web Share API
+      navigator.clipboard.writeText(`${window.location.origin}/products/${product.id}`)
+      setMessage({
+        type: 'success',
+        text: 'Product link copied to clipboard'
+      })
+      setTimeout(() => setMessage(null), 3000)
+    }
+  }
+
+  const ProductCard: React.FC<{ product: Product }> = ({ product }) => (
+    <Card 
+      sx={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        position: 'relative',
+        '&:hover': {
+          boxShadow: 6,
+          transform: 'translateY(-2px)',
+          transition: 'all 0.3s ease-in-out'
+        }
+      }}
+    >
+      {/* Favorite Button */}
+      <IconButton
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          backgroundColor: 'rgba(255, 255, 255, 0.9)',
+          zIndex: 1,
+          '&:hover': {
+            backgroundColor: 'rgba(255, 255, 255, 1)'
+          }
+        }}
+        onClick={() => handleRemoveFromFavorites(product.id)}
+      >
+        <Favorite color="error" />
+      </IconButton>
+
+      {/* Product Image */}
+      <CardMedia
+        component="img"
+        height="200"
+        image={product.imageUrl || `https://via.placeholder.com/300x200?text=${encodeURIComponent(product.name)}`}
+        alt={product.name}
+        sx={{ 
+          cursor: 'pointer',
+          objectFit: 'cover'
+        }}
+        onClick={() => handleProductClick(product.id)}
+      />
+
+      {/* Product Content */}
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Typography 
+          gutterBottom 
+          variant="h6" 
+          component="h2"
+          sx={{ 
+            cursor: 'pointer',
+            '&:hover': { color: 'primary.main' }
+          }}
+          onClick={() => handleProductClick(product.id)}
+        >
+          {product.name}
+        </Typography>
+        
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          sx={{ 
+            mb: 2,
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden'
+          }}
+        >
+          {product.description}
+        </Typography>
+
+        <Box display="flex" gap={1} mb={2}>
+          <Chip 
+            label={product.category} 
+            size="small" 
+            color="primary" 
+            variant="outlined" 
+          />
+          <Chip 
+            label={product.brand} 
+            size="small" 
+            variant="outlined" 
+          />
+        </Box>
+
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+          <Typography variant="h6" color="primary">
+            ${product.price.toFixed(2)}
+          </Typography>
+          {product.rating && (
+            <Typography variant="body2" color="text.secondary">
+              ⭐ {product.rating}/5
+            </Typography>
+          )}
+        </Box>
+
+        <Typography 
+          variant="body2" 
+          color={product.stockQuantity > 0 ? 'success.main' : 'error.main'}
+        >
+          {product.stockQuantity > 0 
+            ? `${product.stockQuantity} in stock` 
+            : 'Out of stock'
+          }
+        </Typography>
+      </CardContent>
+
+      {/* Actions */}
+      <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+        <Button
+          variant="contained"
+          startIcon={<ShoppingCart />}
+          onClick={() => handleAddToCart(product)}
+          disabled={product.stockQuantity <= 0}
+          size="small"
+        >
+          Add to Cart
+        </Button>
+        
+        <Box>
+          <Tooltip title="View Details">
+            <IconButton 
+              size="small"
+              onClick={() => handleProductClick(product.id)}
+            >
+              <Visibility />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Share">
+            <IconButton 
+              size="small"
+              onClick={() => handleShareProduct(product)}
+            >
+              <Share />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </CardActions>
+    </Card>
+  )
+
+  const LoadingSkeleton: React.FC = () => (
+    <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Skeleton variant="rectangular" height={200} />
+      <CardContent sx={{ flexGrow: 1 }}>
+        <Skeleton variant="text" height={32} width="80%" />
+        <Skeleton variant="text" height={20} width="100%" />
+        <Skeleton variant="text" height={20} width="60%" />
+        <Box display="flex" gap={1} my={1}>
+          <Skeleton variant="rounded" height={24} width={60} />
+          <Skeleton variant="rounded" height={24} width={60} />
+        </Box>
+        <Skeleton variant="text" height={24} width="40%" />
+      </CardContent>
+      <CardActions sx={{ px: 2, pb: 2 }}>
+        <Skeleton variant="rounded" height={36} width={120} />
+        <Skeleton variant="circular" height={40} width={40} />
+      </CardActions>
+    </Card>
+  )
+
+  if (!isAuthenticated) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="warning">
+          Please log in to view your favorite products.
+        </Alert>
+      </Container>
+    )
+  }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
-          My Favorites
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-          <Favorite color="error" />
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+        <Box>
+          <Typography variant="h4" component="h1" gutterBottom>
+            My Favorites
+          </Typography>
           <Typography variant="body1" color="text.secondary">
-            {favorites.length} {favorites.length === 1 ? 'item' : 'items'} in your wishlist
+            {favorites.length > 0 
+              ? `${favorites.length} favorite ${favorites.length === 1 ? 'product' : 'products'}`
+              : 'No favorite products yet'
+            }
           </Typography>
         </Box>
       </Box>
 
-      {/* Controls */}
-      <Box sx={{ mb: 4 }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={4}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search favorites..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: <Search sx={{ mr: 1, color: 'text.secondary' }} />
-              }}
-            />
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Category</InputLabel>
-              <Select
-                value={filterCategory}
-                label="Category"
-                onChange={(e) => setFilterCategory(e.target.value)}
-                startAdornment={<FilterList sx={{ mr: 1 }} />}
-              >
-                {categories.map(category => (
-                  <MenuItem key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-          
-          <Grid item xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>Sort By</InputLabel>
-              <Select
-                value={sortBy}
-                label="Sort By"
-                onChange={(e) => setSortBy(e.target.value)}
-                startAdornment={<Sort sx={{ mr: 1 }} />}
-              >
-                <MenuItem value="dateAdded">Date Added</MenuItem>
-                <MenuItem value="priceAsc">Price: Low to High</MenuItem>
-                <MenuItem value="priceDesc">Price: High to Low</MenuItem>
-                <MenuItem value="rating">Rating</MenuItem>
-                <MenuItem value="name">Name</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
+      {/* Messages */}
+      {message && (
+        <Alert severity={message.type} sx={{ mb: 3 }}>
+          {message.text}
+        </Alert>
+      )}
+
+      {/* Content */}
+      {isLoading ? (
+        <Grid container spacing={3}>
+          {[...Array(8)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
+              <LoadingSkeleton />
+            </Grid>
+          ))}
         </Grid>
-      </Box>
-
-      <Divider sx={{ mb: 4 }} />
-
-      {/* Empty State */}
-      {!loading && favorites.length === 0 && (
-        <Box sx={{ textAlign: 'center', py: 8 }}>
-          <FavoriteBorder sx={{ fontSize: 80, color: 'text.secondary', mb: 2 }} />
-          <Typography variant="h4" gutterBottom color="text.secondary">
+      ) : favorites.length === 0 ? (
+        <Box textAlign="center" py={8}>
+          <FavoriteBorder sx={{ fontSize: 100, color: 'text.secondary', mb: 2 }} />
+          <Typography variant="h5" gutterBottom>
             No Favorites Yet
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            Start adding products to your wishlist to see them here.
+          <Typography variant="body1" color="text.secondary" mb={3}>
+            Start browsing products and add items to your favorites to see them here.
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             size="large"
             onClick={() => navigate('/products')}
           >
             Browse Products
           </Button>
         </Box>
-      )}
-
-      {/* No Results */}
-      {!loading && favorites.length > 0 && filteredAndSortedFavorites.length === 0 && (
-        <Alert severity="info" sx={{ mb: 4 }}>
-          No favorites found matching your search criteria.
-        </Alert>
-      )}
-
-      {/* Products Grid */}
-      <Grid container spacing={3}>
-        {loading ? (
-          // Loading skeletons
-          Array.from({ length: 8 }).map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={index}>
-              <Card>
-                <Skeleton variant="rectangular" height={200} />
-                <CardContent>
-                  <Skeleton variant="text" width="80%" />
-                  <Skeleton variant="text" width="60%" />
-                  <Skeleton variant="text" width="40%" />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))
-        ) : (
-          filteredAndSortedFavorites.map((product) => (
+      ) : (
+        <Grid container spacing={3}>
+          {favorites.map((product) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-              <Card 
-                sx={{ 
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)',
-                    boxShadow: 4
-                  }
-                }}
-              >
-                <Box sx={{ position: 'relative' }}>
-                  <CardMedia
-                    component="img"
-                    height="200"
-                    image={product.image}
-                    alt={product.name}
-                    sx={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/products/${product.id}`)}
-                  />
-                  
-                  {/* Discount Badge */}
-                  {product.discount && (
-                    <Chip
-                      label={`-${product.discount}%`}
-                      color="error"
-                      size="small"
-                      sx={{ 
-                        position: 'absolute',
-                        top: 8,
-                        left: 8,
-                        fontWeight: 'bold'
-                      }}
-                    />
-                  )}
-                  
-                  {/* Stock Status */}
-                  {!product.inStock && (
-                    <Chip
-                      label="Out of Stock"
-                      color="default"
-                      size="small"
-                      sx={{ 
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        bgcolor: 'rgba(0,0,0,0.7)',
-                        color: 'white'
-                      }}
-                    />
-                  )}
-                </Box>
-
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography 
-                    variant="h6" 
-                    gutterBottom 
-                    sx={{ 
-                      cursor: 'pointer',
-                      '&:hover': { color: 'primary.main' },
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden'
-                    }}
-                    onClick={() => navigate(`/products/${product.id}`)}
-                  >
-                    {product.name}
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-                    <Chip label={product.category} size="small" color="primary" variant="outlined" />
-                    <Chip label={product.brand} size="small" color="secondary" variant="outlined" />
-                  </Box>
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Rating value={product.rating} precision={0.1} size="small" readOnly />
-                    <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                      ({product.reviewCount})
-                    </Typography>
-                  </Box>
-
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="h6" color="primary" fontWeight="bold">
-                      {formatPrice(product.price)}
-                    </Typography>
-                    {product.originalPrice && (
-                      <Typography 
-                        variant="body2" 
-                        color="text.secondary"
-                        sx={{ textDecoration: 'line-through' }}
-                      >
-                        {formatPrice(product.originalPrice)}
-                      </Typography>
-                    )}
-                  </Box>
-                </CardContent>
-
-                <CardActions sx={{ p: 2, pt: 0 }}>
-                  <Button
-                    fullWidth
-                    variant={product.inStock ? "contained" : "outlined"}
-                    startIcon={<ShoppingCart />}
-                    onClick={() => addToCart(product)}
-                    disabled={!product.inStock}
-                  >
-                    {product.inStock ? 'Add to Cart' : 'Out of Stock'}
-                  </Button>
-                  
-                  <Tooltip title="Remove from favorites">
-                    <IconButton 
-                      color="error"
-                      onClick={() => removeFromFavorites(product.id)}
-                    >
-                      <Remove />
-                    </IconButton>
-                  </Tooltip>
-                  
-                  <Tooltip title="Share">
-                    <IconButton onClick={() => shareProduct(product)}>
-                      <Share />
-                    </IconButton>
-                  </Tooltip>
-                </CardActions>
-              </Card>
+              <ProductCard product={product} />
             </Grid>
-          ))
-        )}
-      </Grid>
+          ))}
+        </Grid>
+      )}
+
+      {/* Floating Action Button */}
+      <Fab
+        color="primary"
+        aria-label="browse products"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+        }}
+        onClick={() => navigate('/products')}
+      >
+        <ShoppingCart />
+      </Fab>
     </Container>
   )
 }

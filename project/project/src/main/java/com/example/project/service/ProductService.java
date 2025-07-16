@@ -9,33 +9,53 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class ProductService {
-
+    
     @Autowired
     private ProductRepository productRepository;
 
+    /**
+     * Find product by ID
+     */
+    public Optional<Product> findById(Long id) {
+        return productRepository.findById(id);
+    }
+    
+    /**
+     * Find all active products with pagination
+     */
     public Page<Product> findAllActive(Pageable pageable) {
-        // Use eager loading to avoid lazy initialization issues
-        return productRepository.findActiveWithCategoryAndBrand(pageable);
+        return productRepository.findByIsActiveTrue(pageable);
     }
-
-    // New method that returns DTOs directly
-    public Page<ProductDTO> findAllActiveDTO(Pageable pageable) {
-        return productRepository.findActiveWithCategoryAndBrand(pageable)
-                .map(ProductDTO::from);
-    }
-
-    public Product findById(Long id) {
-        return productRepository.findById(id).orElse(null);
-    }
-
-    public long countActiveProducts() {
+    
+    /**
+     * Count active products
+     */
+    public Long countActiveProducts() {
         return productRepository.countByIsActiveTrue();
     }
 
+    /**
+     * Find all products with eager loading
+     */
     public List<Product> findAllWithEagerLoading() {
-        return productRepository.findAllWithCategory();
+        return productRepository.findAll(); // Use findAll for now, eager loading can be configured in repository
+    }
+
+    /**
+     * Save product
+     */
+    public Product save(Product product) {
+        return productRepository.save(product);
+    }
+
+    /**
+     * Check if product exists by ID
+     */
+    public boolean existsById(Long id) {
+        return productRepository.existsById(id);
     }
 } 
