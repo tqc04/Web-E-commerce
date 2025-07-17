@@ -626,6 +626,12 @@ class ApiService {
       throw error
     }
   }
+
+  // Categories API
+  async getCategoriesWithCount(): Promise<any[]> {
+    const response = await apiClient.get('/categories/with-count');
+    return response.data;
+  }
 }
 
 // Export singleton instance

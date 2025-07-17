@@ -19,6 +19,7 @@ public class UserDTO {
     private Boolean recommendationEnabled;
     private Boolean personalizationEnabled;
     private String providerId;
+    private String role;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -40,7 +41,7 @@ public class UserDTO {
         dto.providerId = user.getProviderId();
         dto.createdAt = user.getCreatedAt();
         dto.updatedAt = user.getUpdatedAt();
-
+        dto.role = user.getRole() != null ? user.getRole().name() : null;
         return dto;
     }
 
@@ -148,6 +149,9 @@ public class UserDTO {
     public void setProviderId(String providerId) { 
         this.providerId = providerId; 
     }
+
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
 
     public LocalDateTime getCreatedAt() { 
         return createdAt; 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Container,
   Typography,
@@ -32,6 +32,7 @@ import {
   LinkedIn,
 } from '@mui/icons-material';
 import { Link } from 'react-router-dom';
+import { apiService } from '../services/api';
 
 const HomePage: React.FC = () => {
   // Mock data for featured products
@@ -82,14 +83,14 @@ const HomePage: React.FC = () => {
     },
   ];
 
-  const categories = [
-    { name: 'Electronics', icon: '💻', count: 150, color: '#667eea' },
-    { name: 'Gaming', icon: '🎮', count: 89, color: '#764ba2' },
-    { name: 'Computers', icon: '🖥️', count: 67, color: '#f093fb' },
-    { name: 'Mobile', icon: '📱', count: 123, color: '#4facfe' },
-    { name: 'Audio', icon: '🎧', count: 45, color: '#43e97b' },
-    { name: 'Accessories', icon: '🔌', count: 78, color: '#fa709a' },
-  ];
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+
+  useEffect(() => {
+    apiService.getCategoriesWithCount()
+      .then((data) => setCategories(data))
+      .finally(() => setLoadingCategories(false));
+  }, []);
 
   const stats = [
     { number: '50K+', label: 'Happy Customers', icon: '😊' },
@@ -273,6 +274,10 @@ const HomePage: React.FC = () => {
               textAlign: 'center',
               fontWeight: 'bold',
               mb: 1,
+              letterSpacing: 1,
+              textShadow: '0 2px 8px rgba(0,0,0,0.08)',
+              transition: 'color 0.3s',
+              '&:hover': { color: 'primary.main' },
             }}
           >
             Shop by Category
@@ -283,48 +288,58 @@ const HomePage: React.FC = () => {
             sx={{
               textAlign: 'center',
               mb: 5,
+              opacity: 0.85,
+              fontStyle: 'italic',
+              letterSpacing: 0.5,
             }}
           >
             Discover our wide range of products
           </Typography>
 
-          <Grid container spacing={3}>
-            {categories.map((category, index) => (
-              <Grid item xs={6} sm={4} md={2} key={index}>
-                <Card
-                  component={Link}
-                  to={`/products?category=${category.name.toLowerCase()}`}
-                  sx={{
-                    textDecoration: 'none',
-                    height: '100%',
-                    borderRadius: 3,
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 12px 24px rgba(0,0,0,0.15)',
-                    },
-                  }}
-                >
-                  <CardContent
+          {loadingCategories ? (
+            <Typography align="center">Loading categories...</Typography>
+          ) : (
+            <Grid container spacing={4} justifyContent="center">
+              {categories.map((category) => (
+                <Grid item xs={12} sm={6} md={2} key={category.id}>
+                  <Card
+                    component={Link}
+                    to={`/products?category=${category.slug}`}
                     sx={{
-                      textAlign: 'center',
-                      py: 4,
+                      textDecoration: 'none',
+                      height: 180,
+                      borderRadius: 4,
+                      boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'transform 0.25s cubic-bezier(.4,2,.6,1), box-shadow 0.25s',
+                      '&:hover': {
+                        transform: 'scale(1.07) translateY(-6px)',
+                        boxShadow: '0 12px 32px rgba(0,0,0,0.18)',
+                        borderColor: 'primary.main',
+                      },
                     }}
                   >
-                    <Typography variant="h2" sx={{ mb: 2 }}>
-                      {category.icon}
-                    </Typography>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                      {category.name}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {category.count} products
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
+                    {category.imageUrl && (
+                      <CardMedia
+                        component="img"
+                        image={category.imageUrl}
+                        alt={category.name}
+                        sx={{ height: 70, width: 70, objectFit: 'cover', borderRadius: 2, mb: 2, boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}
+                      />
+                    )}
+                    <CardContent sx={{ textAlign: 'center', p: 0 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 0, fontSize: 18 }}>
+                        {category.name}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
         </Container>
       </Box>
 
@@ -653,7 +668,7 @@ const HomePage: React.FC = () => {
         sx={{
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
           color: 'white',
-          py: 8,
+          py: 4, // giảm từ 8 xuống 4 để sát Footer hơn
         }}
       >
         <Container maxWidth="lg">
