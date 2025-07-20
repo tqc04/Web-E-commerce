@@ -7,16 +7,16 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.kafka.annotation.EnableKafka;
 
-@SpringBootApplication(exclude = {
-		org.springframework.ai.autoconfigure.vectorstore.chroma.ChromaVectorStoreAutoConfiguration.class
-})
+@SpringBootApplication
 // @EnableCaching // Disabled - not used
 @EnableAsync
 @EnableScheduling
 @EnableTransactionManagement
 @EnableJpaRepositories
+@EnableJpaAuditing
 @EnableKafka
 public class ProjectApplication {
 

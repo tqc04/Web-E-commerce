@@ -24,6 +24,7 @@ import ReviewsPage from './pages/ReviewsPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import ChatbotPage from './pages/ChatbotPage'
 import SupportPage from './pages/SupportPage'
+import TestPage from './pages/TestPage'
 
 function App() {
   return (
@@ -59,6 +60,7 @@ function App() {
                 <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="/ai-assistant" element={<ChatbotPage />} />
                 <Route path="/support" element={<SupportPage />} />
+                <Route path="/test" element={<TestPage />} />
               </Routes>
             </Box>
             <Footer />

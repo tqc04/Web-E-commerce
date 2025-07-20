@@ -572,9 +572,9 @@ class ApiService {
   /**
    * Send AI chat message
    */
-  async sendChatMessage(message: string, sessionId?: string): Promise<ApiResponse<ChatMessage>> {
+  async sendChatMessage(message: string, sessionId?: number): Promise<ApiResponse<ChatMessage>> {
     try {
-      const response = await apiClient.post('/chatbot/chat', {
+      const response = await apiClient.post('/chatbot/message', {
         message,
         sessionId
       })
@@ -600,6 +600,25 @@ class ApiService {
       }
     } catch (error: any) {
       console.error('Failed to fetch chat history:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Create a new AI chat session
+   */
+  async createChatSession(userId: number, initialMessage: string = ''): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/chatbot/session', {
+        userId,
+        initialMessage
+      })
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to create chat session:', error)
       throw error
     }
   }

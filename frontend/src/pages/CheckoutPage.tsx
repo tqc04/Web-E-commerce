@@ -25,6 +25,12 @@ import {
   ListItemText,
   ListItemAvatar,
   Avatar,
+  Select,
+  MenuItem,
+  InputLabel,
+  FormHelperText,
+  Autocomplete,
+  Chip,
 } from '@mui/material'
 import {
   ShoppingCart,
@@ -34,6 +40,7 @@ import {
   CreditCard,
   AccountBalance,
   Money,
+  LocationOn,
 } from '@mui/icons-material'
 import { useNavigate } from 'react-router-dom'
 import { useCart } from '../contexts/CartContext'
@@ -43,6 +50,19 @@ import notificationService from '../services/notificationService'
 
 const steps = ['Review Cart', 'Shipping Address', 'Payment Method', 'Confirmation']
 
+interface Province {
+  provinceID: number
+  provinceName: string
+  code: string
+}
+
+interface Commune {
+  wardCode: string
+  wardName: string
+  districtID: number
+  code: string
+}
+
 const CheckoutPage: React.FC = () => {
   const navigate = useNavigate()
   const { cart, cartLoading, clearCart } = useCart()
@@ -51,34 +71,50 @@ const CheckoutPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0)
   const [loading, setLoading] = useState(false)
   
+  // Shipping data
+  const [provinces, setProvinces] = useState<Province[]>([])
+  const [communes, setCommunes] = useState<Commune[]>([])
+  const [shippingFee, setShippingFee] = useState(30000) // Default 30,000 VND
+  
+  // Search states
+  const [provinceSearchTerm, setProvinceSearchTerm] = useState('')
+  const [communeSearchTerm, setCommuneSearchTerm] = useState('')
+  const [filteredProvinces, setFilteredProvinces] = useState<Province[]>([])
+  const [filteredCommunes, setFilteredCommunes] = useState<Commune[]>([])
+  
   // Form states
   const [shippingAddress, setShippingAddress] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
+    firstName: '',
+    lastName: '',
+    email: '',
     phone: '',
     address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States'
+    provinceId: null as string | null,
+    communeCode: null as string | null,
+    provinceName: '',
+    communeName: ''
   })
   
   const [billingAddress, setBillingAddress] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
+    firstName: '',
+    lastName: '',
+    email: '',
     phone: '',
     address: '',
-    city: '',
-    state: '',
-    zipCode: '',
-    country: 'United States'
+    provinceId: null as string | null,
+    communeCode: null as string | null,
+    provinceName: '',
+    communeName: ''
   })
   
   const [paymentMethod, setPaymentMethod] = useState('credit_card')
   const [sameAsBilling, setSameAsBilling] = useState(true)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
+
+  // Load provinces on component mount
+  useEffect(() => {
+    loadProvinces()
+  }, [])
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -96,11 +132,178 @@ const CheckoutPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate])
 
+  // Update form when user data is loaded
+  useEffect(() => {
+    if (user) {
+      setShippingAddress(prev => ({
+        ...prev,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || ''
+      }))
+      setBillingAddress(prev => ({
+        ...prev,
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || ''
+      }))
+    }
+  }, [user])
+
+  const loadProvinces = async () => {
+    try {
+      const response = await fetch('http://localhost:8081/api/shipping/provinces')
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Loaded provinces:', data)
+        setProvinces(data)
+        setFilteredProvinces(data)
+      } else {
+        console.error('Failed to load provinces:', response.status)
+      }
+    } catch (error) {
+      console.error('Error loading provinces:', error)
+    }
+  }
+
+  const searchProvinces = async (searchTerm: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/api/shipping/provinces/search?q=${encodeURIComponent(searchTerm)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setFilteredProvinces(data)
+      } else {
+        // Fallback to client-side filtering
+        const filtered = provinces.filter(province => 
+          province.provinceName.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        setFilteredProvinces(filtered)
+      }
+    } catch (error) {
+      console.error('Error searching provinces:', error)
+      // Fallback to client-side filtering
+      const filtered = provinces.filter(province => 
+        province.provinceName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      setFilteredProvinces(filtered)
+    }
+  }
+
+  const loadCommunes = async (provinceCode: string) => {
+    try {
+      const response = await fetch(`http://localhost:8081/api/shipping/provinces/${provinceCode}/communes`)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Loaded communes:', data)
+        console.log('First commune structure:', data[0])
+        console.log('Communes count:', data.length)
+        setCommunes(data)
+        setFilteredCommunes(data)
+      } else {
+        console.error('Failed to load communes:', response.status)
+      }
+    } catch (error) {
+      console.error('Error loading communes:', error)
+    }
+  }
+
+  const searchCommunes = async (searchTerm: string) => {
+    if (!shippingAddress.provinceId || shippingAddress.provinceId === '') return
+    
+    const province = provinces.find(p => p.provinceID.toString() === shippingAddress.provinceId)
+    if (!province) return
+    
+    try {
+      const response = await fetch(`http://localhost:8081/api/shipping/provinces/${province.code}/communes/search?q=${encodeURIComponent(searchTerm)}`)
+      if (response.ok) {
+        const data = await response.json()
+        setFilteredCommunes(data)
+      } else {
+        // Fallback to client-side filtering
+        const filtered = communes.filter(commune => 
+          commune.wardName.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+        setFilteredCommunes(filtered)
+      }
+    } catch (error) {
+      console.error('Error searching communes:', error)
+      // Fallback to client-side filtering
+      const filtered = communes.filter(commune => 
+        commune.wardName.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      setFilteredCommunes(filtered)
+    }
+  }
+
+  const calculateShippingFee = async () => {
+    if (!shippingAddress.provinceId || !shippingAddress.communeCode) {
+      return
+    }
+
+    try {
+      const requestBody = {
+        toDistrictId: parseInt(shippingAddress.provinceId), // Use provinceId as districtId for compatibility
+        toWardCode: shippingAddress.communeCode,
+        insuranceValue: cart ? Math.round(cart.subtotal * 1000) : 0, // Convert to VND
+        weight: 500 // Default 500g
+      }
+      
+      console.log('Calculating shipping fee with:', requestBody)
+      
+      const response = await fetch('http://localhost:8081/api/shipping/calculate-fee', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Shipping fee calculated:', data)
+        setShippingFee(data.shippingFee)
+      } else {
+        console.error('Failed to calculate shipping fee:', response.status)
+        const errorData = await response.json()
+        console.error('Error details:', errorData)
+      }
+    } catch (error) {
+      console.error('Error calculating shipping fee:', error)
+    }
+  }
+
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'VND'
     }).format(price)
+  }
+
+  const handleProvinceChange = (provinceId: string) => {
+    const province = provinces.find(p => p.provinceID.toString() === provinceId)
+    setShippingAddress(prev => ({
+      ...prev,
+      provinceId,
+      provinceName: province?.provinceName || '',
+      communeCode: '',
+      communeName: ''
+    }))
+    
+    if (provinceId && province) {
+      loadCommunes(province.code)
+    }
+  }
+
+  const handleCommuneChange = (communeCode: string) => {
+    const commune = communes.find(c => c.wardCode === communeCode)
+    setShippingAddress(prev => ({
+      ...prev,
+      communeCode,
+      communeName: commune?.wardName || ''
+    }))
+    
+    // Calculate shipping fee when commune is selected
+    setTimeout(() => calculateShippingFee(), 100)
   }
 
   const handleNext = () => {
@@ -116,8 +319,10 @@ const CheckoutPage: React.FC = () => {
   }
 
   const handlePlaceOrder = async () => {
+    console.log('handlePlaceOrder - user:', user, 'cart:', cart)
+    
     if (!cart || !user) {
-      notificationService.error('Unable to place order')
+      notificationService.error('Unable to place order - missing user or cart data')
       return
     }
 
@@ -131,12 +336,15 @@ const CheckoutPage: React.FC = () => {
           productId: item.productId,
           quantity: item.quantity
         })),
-        shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.address}\n${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.zipCode}\n${shippingAddress.country}`,
+        shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`,
         billingAddress: sameAsBilling 
-          ? `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.address}\n${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.zipCode}\n${shippingAddress.country}`
-          : `${billingAddress.firstName} ${billingAddress.lastName}\n${billingAddress.address}\n${billingAddress.city}, ${billingAddress.state} ${billingAddress.zipCode}\n${billingAddress.country}`,
-        paymentMethod: paymentMethod
+          ? `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`
+          : `${billingAddress.firstName} ${billingAddress.lastName}\n${billingAddress.address}\n${billingAddress.communeName}, ${billingAddress.provinceName}`,
+        paymentMethod: paymentMethod,
+        shippingFee: shippingFee
       }
+      
+      console.log('Order data being sent:', orderData)
 
       const response = await apiService.createOrder(orderData)
       
@@ -163,7 +371,8 @@ const CheckoutPage: React.FC = () => {
       case 1:
         return shippingAddress.firstName && shippingAddress.lastName && 
                shippingAddress.email && shippingAddress.address && 
-               shippingAddress.city && shippingAddress.state && shippingAddress.zipCode
+               shippingAddress.provinceId && shippingAddress.provinceId !== '' &&
+               shippingAddress.communeCode && shippingAddress.communeCode !== ''
       case 2:
         return paymentMethod !== ''
       default:
@@ -195,36 +404,269 @@ const CheckoutPage: React.FC = () => {
           <Typography variant="h6" color="text.secondary" sx={{ mb: 3 }}>
             Order Number: {orderNumber}
           </Typography>
-          <Typography variant="body1" sx={{ mb: 4 }}>
-            Thank you for your order! We'll send you a confirmation email shortly.
+          <Typography variant="body1" sx={{ mb: 3 }}>
+            Thank you for your purchase! We'll send you an email confirmation with tracking details.
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center' }}>
-            <Button
-              variant="contained"
-              onClick={() => navigate('/orders')}
-              sx={{ borderRadius: 2 }}
-            >
-              View Orders
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={() => navigate('/products')}
-              sx={{ borderRadius: 2 }}
-            >
-              Continue Shopping
-            </Button>
-          </Box>
+          <Button
+            variant="contained"
+            size="large"
+            onClick={() => navigate('/')}
+            sx={{ mr: 2 }}
+          >
+            Continue Shopping
+          </Button>
+          <Button
+            variant="outlined"
+            size="large"
+            onClick={() => navigate('/orders')}
+          >
+            View Orders
+          </Button>
         </Paper>
       </Container>
     )
   }
 
+  const renderStepContent = (step: number) => {
+    switch (step) {
+      case 0:
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Review Your Cart
+            </Typography>
+            <List>
+              {cart.items.map((item) => (
+                <ListItem key={item.productId} divider>
+                  <ListItemAvatar>
+                    <Avatar src={item.productImage} alt={item.productName} />
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={item.productName}
+                    secondary={`Quantity: ${item.quantity} | Price: ${formatPrice(item.productPrice)}`}
+                  />
+                  <Typography variant="h6">
+                    {formatPrice(item.productPrice * item.quantity)}
+                  </Typography>
+                </ListItem>
+              ))}
+            </List>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Subtotal:</Typography>
+              <Typography>{formatPrice(cart.subtotal)}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Shipping:</Typography>
+              <Typography>{formatPrice(shippingFee)}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Tax:</Typography>
+              <Typography>{formatPrice(cart.taxAmount)}</Typography>
+            </Box>
+            <Divider sx={{ my: 1 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="h6" fontWeight="bold">Total:</Typography>
+              <Typography variant="h6" fontWeight="bold">
+                {formatPrice(cart.totalAmount + shippingFee)}
+              </Typography>
+            </Box>
+          </Box>
+        )
+
+      case 1:
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Shipping Address
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  value={shippingAddress.firstName}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, firstName: e.target.value }))}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  value={shippingAddress.lastName}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, lastName: e.target.value }))}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  type="email"
+                  value={shippingAddress.email}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, email: e.target.value }))}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Phone"
+                  value={shippingAddress.phone}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, phone: e.target.value }))}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Address"
+                  value={shippingAddress.address}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, address: e.target.value }))}
+                  required
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  options={filteredProvinces}
+                  getOptionLabel={(option) => option.provinceName}
+                  value={provinces.find(p => p.provinceID.toString() === (shippingAddress.provinceId || '')) || null}
+                  onChange={(event, newValue) => {
+                    if (newValue) {
+                      handleProvinceChange(newValue.provinceID.toString())
+                    }
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setProvinceSearchTerm(newInputValue)
+                    searchProvinces(newInputValue)
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Tỉnh/Thành phố *"
+                      required
+                      placeholder="Tìm kiếm tỉnh/thành..."
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Typography variant="body2">
+                        {option.provinceName}
+                      </Typography>
+                    </Box>
+                  )}
+                  filterOptions={(x) => x} // Disable built-in filtering
+                  noOptionsText="Không tìm thấy tỉnh/thành"
+                  loading={provinces.length === 0}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete
+                  options={filteredCommunes}
+                  getOptionLabel={(option) => option.wardName}
+                  value={communes.find(c => c.wardCode === (shippingAddress.communeCode || '')) || null}
+                  onChange={(event, newValue) => {
+                    if (newValue) {
+                      handleCommuneChange(newValue.wardCode)
+                    }
+                  }}
+                  onInputChange={(event, newInputValue) => {
+                    setCommuneSearchTerm(newInputValue)
+                    searchCommunes(newInputValue)
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Phường/Xã *"
+                      required
+                      placeholder="Tìm kiếm phường/xã..."
+                      disabled={!shippingAddress.provinceId || shippingAddress.provinceId === ''}
+                    />
+                  )}
+                  renderOption={(props, option) => (
+                    <Box component="li" {...props}>
+                      <Typography variant="body2">
+                        {option.wardName}
+                      </Typography>
+                    </Box>
+                  )}
+                  filterOptions={(x) => x} // Disable built-in filtering
+                  noOptionsText="Không tìm thấy phường/xã"
+                  loading={communes.length === 0}
+                  disabled={!shippingAddress.provinceId || shippingAddress.provinceId === ''}
+                />
+              </Grid>
+            </Grid>
+            
+            {shippingFee > 0 && (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  Shipping fee: {formatPrice(shippingFee)}
+                </Typography>
+              </Alert>
+            )}
+          </Box>
+        )
+
+      case 2:
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Payment Method
+            </Typography>
+            <FormControl component="fieldset">
+              <FormLabel component="legend">Select Payment Method</FormLabel>
+              <RadioGroup
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              >
+                <FormControlLabel
+                  value="credit_card"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CreditCard sx={{ mr: 1 }} />
+                      Credit Card
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="bank_transfer"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <AccountBalance sx={{ mr: 1 }} />
+                      Bank Transfer
+                    </Box>
+                  }
+                />
+                <FormControlLabel
+                  value="cod"
+                  control={<Radio />}
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <Money sx={{ mr: 1 }} />
+                      Cash on Delivery
+                    </Box>
+                  }
+                />
+              </RadioGroup>
+            </FormControl>
+          </Box>
+        )
+
+      default:
+        return null
+    }
+  }
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h3" component="h1" gutterBottom fontWeight="bold">
+      <Typography variant="h4" gutterBottom align="center" fontWeight="bold">
         Checkout
       </Typography>
-
+      
       <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
         {steps.map((label) => (
           <Step key={label}>
@@ -233,255 +675,61 @@ const CheckoutPage: React.FC = () => {
         ))}
       </Stepper>
 
-      <Grid container spacing={4}>
-        {/* Main Content */}
+      <Grid container spacing={3}>
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3, borderRadius: 3 }}>
-            {/* Step 0: Review Cart */}
-            {activeStep === 0 && (
-              <Box>
-                <Typography variant="h5" gutterBottom fontWeight="bold">
-                  Review Your Order
-                </Typography>
-                
-                <List>
-                  {cart.items.map((item) => (
-                    <ListItem key={item.productId} sx={{ py: 2 }}>
-                      <ListItemAvatar>
-                        <Avatar
-                          src={item.productImage || '/api/placeholder/60/60'}
-                          alt={item.productName}
-                          sx={{ width: 60, height: 60 }}
-                        />
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={item.productName}
-                        secondary={`Quantity: ${item.quantity} × ${formatPrice(item.productPrice)}`}
-                        sx={{ ml: 2 }}
-                      />
-                      <Typography variant="h6" fontWeight="bold">
-                        {formatPrice(item.subtotal)}
-                      </Typography>
-                    </ListItem>
-                  ))}
-                </List>
-              </Box>
-            )}
-
-            {/* Step 1: Shipping Address */}
-            {activeStep === 1 && (
-              <Box>
-                <Typography variant="h5" gutterBottom fontWeight="bold">
-                  Shipping Address
-                </Typography>
-                
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="First Name"
-                      value={shippingAddress.firstName}
-                      onChange={(e) => setShippingAddress({...shippingAddress, firstName: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="Last Name"
-                      value={shippingAddress.lastName}
-                      onChange={(e) => setShippingAddress({...shippingAddress, lastName: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Email"
-                      type="email"
-                      value={shippingAddress.email}
-                      onChange={(e) => setShippingAddress({...shippingAddress, email: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Phone Number"
-                      value={shippingAddress.phone}
-                      onChange={(e) => setShippingAddress({...shippingAddress, phone: e.target.value})}
-                    />
-                  </Grid>
-                  <Grid item xs={12}>
-                    <TextField
-                      fullWidth
-                      label="Address"
-                      value={shippingAddress.address}
-                      onChange={(e) => setShippingAddress({...shippingAddress, address: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <TextField
-                      fullWidth
-                      label="City"
-                      value={shippingAddress.city}
-                      onChange={(e) => setShippingAddress({...shippingAddress, city: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <TextField
-                      fullWidth
-                      label="State"
-                      value={shippingAddress.state}
-                      onChange={(e) => setShippingAddress({...shippingAddress, state: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                  <Grid item xs={12} sm={3}>
-                    <TextField
-                      fullWidth
-                      label="ZIP Code"
-                      value={shippingAddress.zipCode}
-                      onChange={(e) => setShippingAddress({...shippingAddress, zipCode: e.target.value})}
-                      required
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-
-            {/* Step 2: Payment Method */}
-            {activeStep === 2 && (
-              <Box>
-                <Typography variant="h5" gutterBottom fontWeight="bold">
-                  Payment Method
-                </Typography>
-                
-                <FormControl component="fieldset">
-                  <FormLabel component="legend">Select Payment Method</FormLabel>
-                  <RadioGroup
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                  >
-                    <FormControlLabel
-                      value="credit_card"
-                      control={<Radio />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <CreditCard />
-                          Credit Card
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      value="bank_transfer"
-                      control={<Radio />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <AccountBalance />
-                          Bank Transfer
-                        </Box>
-                      }
-                    />
-                    <FormControlLabel
-                      value="cash_on_delivery"
-                      control={<Radio />}
-                      label={
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Money />
-                          Cash on Delivery
-                        </Box>
-                      }
-                    />
-                  </RadioGroup>
-                </FormControl>
-
-                {paymentMethod === 'credit_card' && (
-                  <Alert severity="info" sx={{ mt: 2 }}>
-                    Credit card payment will be processed securely. This is a demo - no real payment will be charged.
-                  </Alert>
-                )}
-              </Box>
-            )}
-
-            {/* Navigation Buttons */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            {renderStepContent(activeStep)}
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
               <Button
                 disabled={activeStep === 0}
                 onClick={handleBack}
-                sx={{ borderRadius: 2 }}
+                variant="outlined"
               >
                 Back
               </Button>
-              
               <Button
                 variant="contained"
                 onClick={handleNext}
                 disabled={!isStepValid(activeStep) || loading}
-                sx={{ borderRadius: 2 }}
+                endIcon={loading ? <CircularProgress size={20} /> : null}
               >
-                {loading ? (
-                  <CircularProgress size={24} sx={{ mr: 1 }} />
-                ) : null}
                 {activeStep === steps.length - 1 ? 'Place Order' : 'Next'}
               </Button>
             </Box>
           </Paper>
         </Grid>
 
-        {/* Order Summary Sidebar */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, borderRadius: 3, position: 'sticky', top: 100 }}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
+          <Paper sx={{ p: 3, borderRadius: 3, position: 'sticky', top: 20 }}>
+            <Typography variant="h6" gutterBottom>
               Order Summary
             </Typography>
-
             <Box sx={{ mb: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Subtotal ({cart.totalItems} items)</Typography>
-                <Typography variant="body2">{formatPrice(cart.subtotal)}</Typography>
-              </Box>
-
-              {cart.discountAmount > 0 && (
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2" color="success.main">
-                    Discount {cart.promoCode && `(${cart.promoCode})`}
-                  </Typography>
-                  <Typography variant="body2" color="success.main">
-                    -{formatPrice(cart.discountAmount)}
-                  </Typography>
-                </Box>
-              )}
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Shipping</Typography>
-                <Typography variant="body2">
-                  {cart.shippingAmount === 0 ? 'FREE' : formatPrice(cart.shippingAmount)}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Tax</Typography>
-                <Typography variant="body2">{formatPrice(cart.taxAmount)}</Typography>
-              </Box>
+              <Typography variant="body2" color="text.secondary">
+                {cart.items.length} item(s)
+              </Typography>
             </Box>
-
-            <Divider sx={{ mb: 2 }} />
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Subtotal:</Typography>
+              <Typography>{formatPrice(cart.subtotal)}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Shipping:</Typography>
+              <Typography>{formatPrice(shippingFee)}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Tax:</Typography>
+              <Typography>{formatPrice(cart.taxAmount)}</Typography>
+            </Box>
+            <Divider sx={{ my: 1 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="h6" fontWeight="bold">Total:</Typography>
               <Typography variant="h6" fontWeight="bold">
-                Total
-              </Typography>
-              <Typography variant="h6" fontWeight="bold" color="primary">
-                {formatPrice(cart.totalAmount)}
+                {formatPrice(cart.totalAmount + shippingFee)}
               </Typography>
             </Box>
-
-            <Alert severity="success" icon={<LocalShipping />} sx={{ borderRadius: 2 }}>
-              {cart.shippingAmount === 0 ? 'Free shipping included!' : 'Shipping calculated at checkout'}
-            </Alert>
           </Paper>
         </Grid>
       </Grid>
