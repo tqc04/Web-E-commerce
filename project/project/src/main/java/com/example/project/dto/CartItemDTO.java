@@ -30,8 +30,10 @@ public class CartItemDTO {
 
     // Helper method to calculate subtotal
     public void calculateSubtotal() {
-        if (productPrice != null && quantity != null) {
+        if (productPrice != null && quantity != null && quantity > 0) {
             this.subtotal = productPrice.multiply(BigDecimal.valueOf(quantity));
+        } else {
+            this.subtotal = BigDecimal.ZERO;
         }
     }
 

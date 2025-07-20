@@ -57,18 +57,49 @@ public class CartController {
      * Update cart item quantity
      */
     @PutMapping("/update")
-    public ResponseEntity<CartDTO> updateCartItem(
+    public ResponseEntity<?> updateCartItem(
             @RequestBody Map<String, Object> request,
             @RequestParam(required = false) Long userId,
             HttpSession session) {
         try {
+            System.out.println("Cart update request: " + request);
+            
+            // Validate required fields
+            if (!request.containsKey("productId") || !request.containsKey("quantity")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Missing required fields: productId and quantity"
+                ));
+            }
+            
             Long productId = Long.valueOf(request.get("productId").toString());
             Integer quantity = Integer.valueOf(request.get("quantity").toString());
             
+            System.out.println("Updating cart - userId: " + userId + ", productId: " + productId + ", quantity: " + quantity);
+            
+            // If quantity is 0 or negative, remove the item
+            if (quantity <= 0) {
+                System.out.println("Quantity is " + quantity + ", removing item from cart");
+                CartDTO cart = cartService.removeFromCart(userId, productId, session);
+                return ResponseEntity.ok(cart);
+            }
+            
             CartDTO cart = cartService.updateCartItem(userId, productId, quantity, session);
+            System.out.println("Cart updated successfully");
             return ResponseEntity.ok(cart);
+            
+        } catch (NumberFormatException e) {
+            System.err.println("Number format error: " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Invalid number format in request",
+                "details", e.getMessage()
+            ));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
+            System.err.println("Error updating cart: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Failed to update cart",
+                "details", e.getMessage()
+            ));
         }
     }
 

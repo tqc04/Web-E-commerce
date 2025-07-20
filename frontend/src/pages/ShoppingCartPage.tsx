@@ -176,9 +176,9 @@ const ShoppingCartPage: React.FC = () => {
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Chip label={cart.totalItems} color="primary" size="small" />
-          <Typography variant="body1" color="text.secondary">
+          <Box component="span" sx={{ color: 'text.secondary' }}>
             {cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'} in your cart
-          </Typography>
+          </Box>
         </Box>
       </Box>
 
@@ -194,7 +194,7 @@ const ShoppingCartPage: React.FC = () => {
                     <Grid item xs={12} sm={3}>
                       <Box
                         component="img"
-                        src={item.productImage || '/api/placeholder/120/120'}
+                        src={item.productImage || `https://via.placeholder.com/120x120?text=${encodeURIComponent(item.productName)}`}
                         alt={item.productName}
                         sx={{ 
                           width: '100%',

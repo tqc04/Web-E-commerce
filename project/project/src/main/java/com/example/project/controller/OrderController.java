@@ -5,6 +5,7 @@ import com.example.project.entity.Order;
 import com.example.project.entity.OrderStatus;
 import com.example.project.entity.OrderStatusHistory;
 import com.example.project.service.OrderService;
+import com.example.project.service.CartService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +24,23 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
+    
+    @Autowired
+    private CartService cartService;
+
+    /**
+     * Get all orders (with pagination)
+     */
+    @GetMapping
+    public ResponseEntity<Page<OrderDTO>> getAllOrders(Pageable pageable) {
+        try {
+            Page<Order> orders = orderService.getAllOrders(pageable);
+            Page<OrderDTO> orderDTOs = orders.map(OrderDTO::from);
+            return ResponseEntity.ok(orderDTOs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 
     /**
      * Get order by ID
@@ -81,6 +99,9 @@ public class OrderController {
 
             Order createdOrder = orderService.createOrder(userId, items, shippingAddress, billingAddress, paymentMethod, ipAddress, userAgent);
             OrderDTO orderDTO = OrderDTO.from(createdOrder);
+            
+            // Clear cart after successful order
+            cartService.clearCartAfterOrder(userId, request.getSession());
             
             return ResponseEntity.ok(orderDTO);
             
