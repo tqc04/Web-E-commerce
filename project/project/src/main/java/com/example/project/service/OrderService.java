@@ -6,6 +6,10 @@ import com.example.project.repository.OrderRepository;
 import com.example.project.repository.OrderStatusHistoryRepository;
 import com.example.project.repository.UserRepository;
 import com.example.project.repository.ProductRepository;
+import com.example.project.repository.InventoryItemRepository;
+import com.example.project.entity.InventoryItem;
+import com.example.project.entity.Warehouse;
+import com.example.project.repository.WarehouseRepository;
 import com.example.project.service.ai.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -16,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -37,6 +42,15 @@ public class OrderService {
     private InventoryService inventoryService;
     
     @Autowired
+    private InventoryItemRepository inventoryItemRepository;
+    
+    @Autowired
+    private WarehouseRepository warehouseRepository;
+    
+    @Autowired
+    private ShippingService shippingService;
+    
+    @Autowired
     private AIService aiService;
     
     /**
@@ -44,7 +58,7 @@ public class OrderService {
      */
     public Order createOrder(Long userId, List<OrderItemRequest> items, 
                            String shippingAddress, String billingAddress,
-                           String paymentMethod, String ipAddress, String userAgent) {
+                           String paymentMethod, BigDecimal shippingFee, String note, String ipAddress, String userAgent) {
         
         System.out.println("OrderService.createOrder - userId: " + userId + ", items: " + items.size());
         
@@ -137,19 +151,13 @@ public class OrderService {
         }
         
         order.setSubtotal(subtotal);
-        
-        // Calculate tax and shipping
+        order.setShippingAmount(shippingFee);
+        // Calculate tax
         BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.1)); // 10% tax
-        BigDecimal shippingAmount = BigDecimal.valueOf(25.00); // Fixed shipping fee
-        if (subtotal.compareTo(BigDecimal.valueOf(500)) >= 0) {
-            shippingAmount = BigDecimal.ZERO; // Free shipping over $500
-        }
-        
         order.setTaxAmount(taxAmount);
-        order.setShippingAmount(shippingAmount);
-        order.setTotalAmount(subtotal.add(taxAmount).add(shippingAmount));
+        order.setTotalAmount(subtotal.add(taxAmount).add(shippingFee));
         
-        System.out.println("Order totals - subtotal: " + subtotal + ", tax: " + taxAmount + ", shipping: " + shippingAmount + ", total: " + order.getTotalAmount());
+        System.out.println("Order totals - subtotal: " + subtotal + ", tax: " + taxAmount + ", shipping: " + shippingFee + ", total: " + order.getTotalAmount());
         
         // AI Fraud Detection (disabled for now)
         order.setFraudScore(0.1); // Low risk by default

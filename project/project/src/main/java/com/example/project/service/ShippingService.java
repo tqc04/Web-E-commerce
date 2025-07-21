@@ -13,6 +13,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import com.example.project.entity.Warehouse;
+import com.example.project.repository.WarehouseRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class ShippingService {
@@ -20,7 +23,7 @@ public class ShippingService {
     @Value("${ghn.api.token:}")
     private String ghnToken;
 
-    @Value("${ghn.api.base-url:https://dev-online.giaohangnhanh.vn}")
+    @Value("${ghn.api.base-url:https://online-gateway.ghn.vn/shiip/public-api/v2}")
     private String ghnBaseUrl;
     
     // Vietnam Address API - Official Government API
@@ -39,6 +42,12 @@ public class ShippingService {
     }
 
     private final RestTemplate restTemplate = new RestTemplate();
+
+    @Autowired
+    private WarehouseRepository warehouseRepository;
+
+    @Value("${ghn.api.mock-create-order:false}")
+    private boolean mockCreateOrder;
 
     // Vietnam Government Address API DTOs
     public static class Province {
@@ -300,17 +309,16 @@ public class ShippingService {
     /**
      * Search communes by name within a province
      */
-    public List<Ward> searchCommunes(String provinceCode, String searchTerm) {
+    public List<Map<String, Object>> searchCommunes(String provinceCode, String searchTerm) {
         try {
-            List<Ward> allCommunes = getCommunesByProvince(provinceCode);
+            List<Map<String, Object>> allCommunes = getCommunesByProvince(provinceCode);
             if (searchTerm == null || searchTerm.trim().isEmpty()) {
                 return allCommunes;
             }
-            
             String lowerSearchTerm = searchTerm.toLowerCase().trim();
             return allCommunes.stream()
-                .filter(commune -> commune.getWardName().toLowerCase().contains(lowerSearchTerm))
-                .collect(java.util.stream.Collectors.toList());
+                .filter(commune -> ((String) commune.get("wardName")).toLowerCase().contains(lowerSearchTerm))
+                .toList();
         } catch (Exception e) {
             System.err.println("Error searching communes: " + e.getMessage());
             return List.of();
@@ -318,8 +326,9 @@ public class ShippingService {
     }
     
     /**
-     * Search wards by name within a district
+     * @deprecated Địa chỉ mới không còn districtId/wardCode, chỉ dùng calculateShippingFeeByProvinceCommune
      */
+    @Deprecated
     public List<Ward> searchWards(Integer districtId, String searchTerm) {
         try {
             List<Ward> allWards = getWards(districtId);
@@ -390,54 +399,37 @@ public class ShippingService {
      * Get communes by province code using Vietnam Government Address API
      * This replaces the old getDistricts method - now we get communes directly
      */
-    public List<Ward> getCommunesByProvince(String provinceCode) {
+    public List<Map<String, Object>> getCommunesByProvince(String provinceCode) {
         try {
-            // Use Vietnam Government Address API for communes by province
             String effectiveDate = getCurrentEffectiveDate();
             String url = VIETNAM_GOV_API_BASE + "/" + effectiveDate + "/provinces/" + provinceCode + "/communes";
             HttpHeaders headers = new HttpHeaders();
             headers.set("Content-Type", "application/json");
-            
-            System.out.println("Calling Vietnam Government Address API for communes by province: " + url);
-            
-            // API returns an object with communes array
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                url, HttpMethod.GET, new HttpEntity<>(headers), 
+                url, HttpMethod.GET, new HttpEntity<>(headers),
                 new org.springframework.core.ParameterizedTypeReference<Map<String, Object>>() {}
             );
-            
-            if (response.getBody() != null) {
-                Map<String, Object> responseBody = response.getBody();
-                if (responseBody.containsKey("communes")) {
-                    List<Map<String, Object>> communesData = (List<Map<String, Object>>) responseBody.get("communes");
-                    List<Ward> communes = new ArrayList<>();
-                    
-                    for (Map<String, Object> communeData : communesData) {
-                        String communeCode = (String) communeData.get("code");
-                        String communeName = (String) communeData.get("name");
-                        
-                        if (communeCode != null && communeName != null) {
-                            Ward commune = new Ward();
-                            commune.setWardCode(communeCode);
-                            commune.setWardName(communeName);
-                            commune.setCode(communeCode);
-                            // Use provinceCode as districtId for compatibility
-                            commune.setDistrictID(Integer.parseInt(provinceCode));
-                            communes.add(commune);
-                        }
+            if (response.getBody() != null && response.getBody().containsKey("communes")) {
+                List<Map<String, Object>> communesData = (List<Map<String, Object>>) response.getBody().get("communes");
+                List<Map<String, Object>> result = new ArrayList<>();
+                for (Map<String, Object> c : communesData) {
+                    Map<String, Object> map = new java.util.HashMap<>();
+                    map.put("wardCode", c.get("code"));
+                    map.put("wardName", c.get("name"));
+                    if (c.containsKey("district_id")) {
+                        map.put("districtID", c.get("district_id"));
+                    } else {
+                        map.put("districtID", null);
                     }
-                    
-                    System.out.println("Successfully loaded " + communes.size() + " communes from Vietnam Government Address API");
-                    return communes;
+                    result.add(map);
                 }
+                return result;
             }
         } catch (Exception e) {
             System.err.println("Error getting communes from Vietnam Government Address API: " + e.getMessage());
             e.printStackTrace();
         }
-        
-        // Return mock data if API fails
-        return getMockCommunes(Integer.parseInt(provinceCode));
+        return List.of();
     }
     
     /**
@@ -494,9 +486,9 @@ public class ShippingService {
     }
 
     /**
-     * Get wards by district ID using Vietnam Government Address API
-     * We need to get communes for the province that contains this district
+     * @deprecated Địa chỉ mới không còn districtId/wardCode, chỉ dùng calculateShippingFeeByProvinceCommune
      */
+    @Deprecated
     public List<Ward> getWards(Integer districtId) {
         try {
             // First, we need to find which province this district belongs to
@@ -607,30 +599,37 @@ public class ShippingService {
     }
 
     /**
-     * Calculate shipping fee
+     * Tính phí ship dựa trên province/commune (không còn districtId/wardCode)
      */
-    public BigDecimal calculateShippingFee(Integer toDistrictId, String toWardCode, Integer insuranceValue, Integer weight) {
+    public BigDecimal calculateShippingFeeByProvinceCommune(String fromProvince, String fromCommune, String toProvince, String toCommune, Integer insuranceValue, Integer weight) {
         try {
-            String url = ghnBaseUrl + "/api/v1/shipping-order/fee";
+            String url = ghnBaseUrl + "/shipping-order/fee";
             HttpHeaders headers = createHeaders();
-            
+
             ShippingFeeRequest request = new ShippingFeeRequest();
-            request.setToDistrictId(toDistrictId);
-            request.setToWardCode(toWardCode);
+            request.setFromDistrictId(Integer.parseInt(fromProvince)); // PHẢI là mã GHN, không phải id tự sinh
+            request.setToDistrictId(Integer.parseInt(toProvince));     // PHẢI là mã GHN, không phải id tự sinh
+            request.setToWardCode(toCommune);         // PHẢI là mã GHN, không phải id tự sinh
             request.setInsuranceValue(insuranceValue != null ? insuranceValue : 0);
             request.setWeight(weight != null ? weight : 500);
-            
+            // GHN API mới yêu cầu thêm service_id, shop_id nếu cần
+            // request.setServiceId(serviceId); // serviceId lấy từ GHN API get available services
+            // request.setShopId(shopId); // shopId lấy từ config hoặc DB
+
+            // Log payload gửi lên GHN để debug
+            System.out.println("GHN Shipping Fee Payload: " + new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(request));
+
             HttpEntity<ShippingFeeRequest> entity = new HttpEntity<>(request, headers);
-            
+
             ResponseEntity<ShippingFeeResponse> response = restTemplate.postForEntity(url, entity, ShippingFeeResponse.class);
-            
+
             if (response.getBody() != null && response.getBody().getCode() == 200) {
                 return BigDecimal.valueOf(response.getBody().getData().getTotal());
             }
         } catch (Exception e) {
             System.err.println("Error calculating shipping fee: " + e.getMessage());
         }
-        
+
         // Return default shipping fee if API fails
         return BigDecimal.valueOf(30000); // 30,000 VND default
     }
@@ -640,6 +639,17 @@ public class ShippingService {
      */
     public Map<String, Object> createShippingOrder(Map<String, Object> orderData) {
         try {
+            if (mockCreateOrder) {
+                // Trả về dữ liệu mẫu, không gọi GHN thật
+                return Map.of(
+                    "code", 200,
+                    "message", "Mocked create order (no real order created)",
+                    "data", Map.of(
+                        "order_code", "MOCK123456",
+                        "expected_delivery_time", System.currentTimeMillis() + 3 * 24 * 3600 * 1000L
+                    )
+                );
+            }
             String url = ghnBaseUrl + "/api/v1/shipping-order/create";
             HttpHeaders headers = createHeaders();
             
@@ -658,8 +668,10 @@ public class ShippingService {
 
     private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Token", ghnToken);
+        headers.set("Token", ghnToken); // Đảm bảo luôn truyền header Token đúng
         headers.set("Content-Type", "application/json");
+        // Nếu GHN yêu cầu header ShopId:
+        // headers.set("ShopId", shopId); // shopId lấy từ config hoặc DB
         return headers;
     }
 

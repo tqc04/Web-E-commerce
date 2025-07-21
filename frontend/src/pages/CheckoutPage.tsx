@@ -56,11 +56,17 @@ interface Province {
   code: string
 }
 
+// Sửa interface Commune cho đúng dữ liệu GHN
 interface Commune {
-  wardCode: string
-  wardName: string
-  districtID: number
-  code: string
+  wardCode: string;
+  wardName: string;
+  districtID: number;
+}
+
+// Interface Commune chỉ cần id và name
+interface Commune {
+  id: string;
+  name: string;
 }
 
 const CheckoutPage: React.FC = () => {
@@ -74,7 +80,8 @@ const CheckoutPage: React.FC = () => {
   // Shipping data
   const [provinces, setProvinces] = useState<Province[]>([])
   const [communes, setCommunes] = useState<Commune[]>([])
-  const [shippingFee, setShippingFee] = useState(30000) // Default 30,000 VND
+  // Sửa state shippingFee mặc định là null
+  const [shippingFee, setShippingFee] = useState<number | null>(null);
   
   // Search states
   const [provinceSearchTerm, setProvinceSearchTerm] = useState('')
@@ -83,6 +90,7 @@ const CheckoutPage: React.FC = () => {
   const [filteredCommunes, setFilteredCommunes] = useState<Commune[]>([])
   
   // Form states
+  // Sửa state shippingAddress để lưu districtId và wardCode
   const [shippingAddress, setShippingAddress] = useState({
     firstName: '',
     lastName: '',
@@ -90,9 +98,10 @@ const CheckoutPage: React.FC = () => {
     phone: '',
     address: '',
     provinceId: null as string | null,
-    communeCode: null as string | null,
+    communeCode: null as string | null, // ward_code
     provinceName: '',
-    communeName: ''
+    communeName: '',
+    note: ''
   })
   
   const [billingAddress, setBillingAddress] = useState({
@@ -189,21 +198,27 @@ const CheckoutPage: React.FC = () => {
     }
   }
 
+  // Sửa loadCommunes để set đúng state
   const loadCommunes = async (provinceCode: string) => {
     try {
       const response = await fetch(`http://localhost:8081/api/shipping/provinces/${provinceCode}/communes`)
       if (response.ok) {
         const data = await response.json()
-        console.log('Loaded communes:', data)
-        console.log('First commune structure:', data[0])
-        console.log('Communes count:', data.length)
-        setCommunes(data)
-        setFilteredCommunes(data)
+        // Map dữ liệu trả về đúng key
+        const mapped = data.map((c: any) => ({
+          wardCode: c.wardCode,
+          wardName: c.wardName,
+          districtID: c.districtID
+        }))
+        setCommunes(mapped)
+        setFilteredCommunes(mapped)
       } else {
-        console.error('Failed to load communes:', response.status)
+        setCommunes([])
+        setFilteredCommunes([])
       }
     } catch (error) {
-      console.error('Error loading communes:', error)
+      setCommunes([])
+      setFilteredCommunes([])
     }
   }
 
@@ -221,7 +236,7 @@ const CheckoutPage: React.FC = () => {
       } else {
         // Fallback to client-side filtering
         const filtered = communes.filter(commune => 
-          commune.wardName.toLowerCase().includes(searchTerm.toLowerCase())
+          commune.name.toLowerCase().includes(searchTerm.toLowerCase())
         )
         setFilteredCommunes(filtered)
       }
@@ -229,48 +244,62 @@ const CheckoutPage: React.FC = () => {
       console.error('Error searching communes:', error)
       // Fallback to client-side filtering
       const filtered = communes.filter(commune => 
-        commune.wardName.toLowerCase().includes(searchTerm.toLowerCase())
+        commune.name.toLowerCase().includes(searchTerm.toLowerCase())
       )
       setFilteredCommunes(filtered)
     }
   }
 
-  const calculateShippingFee = async () => {
-    if (!shippingAddress.provinceId || !shippingAddress.communeCode) {
-      return
-    }
+  // Sửa fetchWarehouseForFirstProduct trả về provinceId, communeCode
+  const fetchWarehouseForFirstProduct = async (productId: number) => {
+    try {
+      const res = await fetch(`http://localhost:8081/api/inventory/product/${productId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.warehouse) {
+          return {
+            provinceId: data.warehouse.province,
+            communeCode: data.warehouse.commune
+          };
+        }
+      }
+    } catch (e) {}
+    // fallback HCM
+    return { provinceId: '79', communeCode: '20109' };
+  };
 
+  // Sửa calculateShippingFee để chỉ gửi đúng các trường GHN yêu cầu: from_district_id, service_id, to_district_id, to_ward_code, height, length, weight, width. Không gửi các trường khác. Lấy service_id mặc định (ví dụ 53321). Khi chọn xã/phường, chỉ cần lấy ward_code và district_id.
+  const calculateShippingFee = async () => {
+    if (!shippingAddress.provinceId || !shippingAddress.communeCode || !cart || !cart.items.length) {
+      setShippingFee(null);
+      return;
+    }
+    // Lấy warehouse cho sản phẩm đầu tiên
+    const firstProductId = cart.items[0].productId;
+    const warehouse = await fetchWarehouseForFirstProduct(firstProductId);
     try {
       const requestBody = {
-        toDistrictId: parseInt(shippingAddress.provinceId), // Use provinceId as districtId for compatibility
-        toWardCode: shippingAddress.communeCode,
-        insuranceValue: cart ? Math.round(cart.subtotal * 1000) : 0, // Convert to VND
-        weight: 500 // Default 500g
-      }
-      
-      console.log('Calculating shipping fee with:', requestBody)
-      
+        fromProvince: warehouse.provinceId,
+        fromCommune: warehouse.communeCode,
+        toProvince: shippingAddress.provinceId,
+        toCommune: shippingAddress.communeCode,
+        weight: 1000
+      };
       const response = await fetch('http://localhost:8081/api/shipping/calculate-fee', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
-      })
-
+      });
       if (response.ok) {
-        const data = await response.json()
-        console.log('Shipping fee calculated:', data)
-        setShippingFee(data.shippingFee)
+        const data = await response.json();
+        setShippingFee(data.shippingFee);
       } else {
-        console.error('Failed to calculate shipping fee:', response.status)
-        const errorData = await response.json()
-        console.error('Error details:', errorData)
+        setShippingFee(null);
       }
     } catch (error) {
-      console.error('Error calculating shipping fee:', error)
+      setShippingFee(null);
     }
-  }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('vi-VN', {
@@ -279,6 +308,7 @@ const CheckoutPage: React.FC = () => {
     }).format(price)
   }
 
+  // Khi chọn tỉnh/thành phố, load xã/phường theo provinceCode
   const handleProvinceChange = (provinceId: string) => {
     const province = provinces.find(p => p.provinceID.toString() === provinceId)
     setShippingAddress(prev => ({
@@ -286,38 +316,53 @@ const CheckoutPage: React.FC = () => {
       provinceId,
       provinceName: province?.provinceName || '',
       communeCode: '',
-      communeName: ''
+      communeName: '',
+      districtId: null
     }))
-    
+    setCommunes([])
+    setFilteredCommunes([])
+    setShippingFee(null)
     if (provinceId && province) {
       loadCommunes(province.code)
     }
   }
 
-  const handleCommuneChange = (communeCode: string) => {
-    const commune = communes.find(c => c.wardCode === communeCode)
+  // Sửa handleCommuneChange để lưu wardCode, wardName, districtID
+  const handleCommuneChange = (wardCode: string) => {
+    const commune = communes.find(c => c.wardCode === wardCode)
     setShippingAddress(prev => ({
       ...prev,
-      communeCode,
-      communeName: commune?.wardName || ''
+      communeCode: wardCode,
+      communeName: commune?.wardName || '',
+      districtId: commune?.districtID || null
     }))
-    
-    // Calculate shipping fee when commune is selected
     setTimeout(() => calculateShippingFee(), 100)
   }
 
-  const handleNext = () => {
-    if (activeStep === steps.length - 1) {
-      handlePlaceOrder()
-    } else {
-      setActiveStep((prevActiveStep) => prevActiveStep + 1)
+  // Khi bấm Next ở bước Shipping Address, nếu shippingFee chưa xác định thì gọi lại calculateShippingFee trước khi sang bước tiếp theo
+  const handleNext = async () => {
+    if (activeStep === 1) {
+      // Đảm bảo đã có phí ship trước khi sang bước tiếp
+      if (shippingFee === null) {
+        await calculateShippingFee();
+        if (shippingFee === null) {
+          notificationService.error('Vui lòng nhập đầy đủ địa chỉ để tính phí vận chuyển!');
+          return;
+        }
+      }
     }
-  }
+    if (activeStep === steps.length - 1) {
+      handlePlaceOrder();
+    } else {
+      setActiveStep((prevActiveStep) => prevActiveStep + 1);
+    }
+  };
 
   const handleBack = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1)
   }
 
+  // Sửa handlePlaceOrder để chỉ gửi địa chỉ thực sự vào shippingAddress và billingAddress
   const handlePlaceOrder = async () => {
     console.log('handlePlaceOrder - user:', user, 'cart:', cart)
     
@@ -336,12 +381,13 @@ const CheckoutPage: React.FC = () => {
           productId: item.productId,
           quantity: item.quantity
         })),
-        shippingAddress: `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`,
+        shippingAddress: `${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`,
         billingAddress: sameAsBilling 
-          ? `${shippingAddress.firstName} ${shippingAddress.lastName}\n${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`
-          : `${billingAddress.firstName} ${billingAddress.lastName}\n${billingAddress.address}\n${billingAddress.communeName}, ${billingAddress.provinceName}`,
+          ? `${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`
+          : `${billingAddress.address}\n${billingAddress.communeName}, ${billingAddress.provinceName}`,
         paymentMethod: paymentMethod,
-        shippingFee: shippingFee
+        shippingFee: shippingFee,
+        note: shippingAddress.note // gửi note vào backend
       }
       
       console.log('Order data being sent:', orderData)
@@ -433,51 +479,6 @@ const CheckoutPage: React.FC = () => {
         return (
           <Box>
             <Typography variant="h6" gutterBottom>
-              Review Your Cart
-            </Typography>
-            <List>
-              {cart.items.map((item) => (
-                <ListItem key={item.productId} divider>
-                  <ListItemAvatar>
-                    <Avatar src={item.productImage} alt={item.productName} />
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={item.productName}
-                    secondary={`Quantity: ${item.quantity} | Price: ${formatPrice(item.productPrice)}`}
-                  />
-                  <Typography variant="h6">
-                    {formatPrice(item.productPrice * item.quantity)}
-                  </Typography>
-                </ListItem>
-              ))}
-            </List>
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography>Subtotal:</Typography>
-              <Typography>{formatPrice(cart.subtotal)}</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography>Shipping:</Typography>
-              <Typography>{formatPrice(shippingFee)}</Typography>
-            </Box>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography>Tax:</Typography>
-              <Typography>{formatPrice(cart.taxAmount)}</Typography>
-            </Box>
-            <Divider sx={{ my: 1 }} />
-            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="h6" fontWeight="bold">Total:</Typography>
-              <Typography variant="h6" fontWeight="bold">
-                {formatPrice(cart.totalAmount + shippingFee)}
-              </Typography>
-            </Box>
-          </Box>
-        )
-
-      case 1:
-        return (
-          <Box>
-            <Typography variant="h6" gutterBottom>
               Shipping Address
             </Typography>
             <Grid container spacing={2}>
@@ -565,15 +566,29 @@ const CheckoutPage: React.FC = () => {
                 <Autocomplete
                   options={filteredCommunes}
                   getOptionLabel={(option) => option.wardName}
-                  value={communes.find(c => c.wardCode === (shippingAddress.communeCode || '')) || null}
+                  value={filteredCommunes.find(c => c.wardCode === (shippingAddress.communeCode || '')) || null}
                   onChange={(event, newValue) => {
                     if (newValue) {
                       handleCommuneChange(newValue.wardCode)
+                    } else {
+                      // User clear selection: reset về danh sách gốc
+                      setShippingAddress(prev => ({
+                        ...prev,
+                        communeCode: '',
+                        communeName: '',
+                        districtId: null
+                      }));
+                      setShippingFee(null);
+                      setCommunes([]) // reset lại danh sách xã/phường gốc
                     }
                   }}
                   onInputChange={(event, newInputValue) => {
                     setCommuneSearchTerm(newInputValue)
-                    searchCommunes(newInputValue)
+                    if (newInputValue === '') {
+                      setFilteredCommunes(communes); // Nếu xóa input, trả lại danh sách gốc
+                    } else {
+                      searchCommunes(newInputValue)
+                    }
                   }}
                   renderInput={(params) => (
                     <TextField
@@ -597,12 +612,73 @@ const CheckoutPage: React.FC = () => {
                   disabled={!shippingAddress.provinceId || shippingAddress.provinceId === ''}
                 />
               </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Ghi chú (Note)"
+                  value={shippingAddress.note}
+                  onChange={(e) => setShippingAddress(prev => ({ ...prev, note: e.target.value }))}
+                  multiline
+                  minRows={2}
+                  placeholder="Ghi chú cho đơn hàng (nếu có)"
+                />
+              </Grid>
             </Grid>
-            
-            {shippingFee > 0 && (
+          </Box>
+        )
+
+      case 1:
+        return (
+          <Box>
+            <Typography variant="h6" gutterBottom>
+              Order Summary
+            </Typography>
+            <List>
+              {cart.items.map((item) => (
+                <ListItem key={item.productId} divider>
+                  <ListItemAvatar>
+                    <Avatar src={item.productImage} alt={item.productName} />
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={item.productName}
+                    secondary={`Quantity: ${item.quantity} | Price: ${formatPrice(item.productPrice)}`}
+                  />
+                  <Typography variant="h6">
+                    {formatPrice(item.productPrice * item.quantity)}
+                  </Typography>
+                </ListItem>
+              ))}
+            </List>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Subtotal:</Typography>
+              <Typography>{formatPrice(cart.subtotal)}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Shipping:</Typography>
+              <Typography>{shippingFee !== null ? formatPrice(shippingFee) : 'Chưa xác định'}</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+              <Typography>Tax:</Typography>
+              <Typography>{formatPrice(cart.taxAmount)}</Typography>
+            </Box>
+            <Divider sx={{ my: 1 }} />
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Typography variant="h6" fontWeight="bold">Total:</Typography>
+              <Typography variant="h6" fontWeight="bold">
+                {formatPrice(cart.totalAmount + (shippingFee || 0))}
+              </Typography>
+            </Box>
+            {shippingFee !== null ? (
               <Alert severity="info" sx={{ mt: 2 }}>
                 <Typography variant="body2">
                   Shipping fee: {formatPrice(shippingFee)}
+                </Typography>
+              </Alert>
+            ) : (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  Shipping fee: Chưa xác định
                 </Typography>
               </Alert>
             )}
@@ -717,7 +793,7 @@ const CheckoutPage: React.FC = () => {
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography>Shipping:</Typography>
-              <Typography>{formatPrice(shippingFee)}</Typography>
+              <Typography>{shippingFee !== null ? formatPrice(shippingFee) : 'Chưa xác định'}</Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
               <Typography>Tax:</Typography>
@@ -727,7 +803,7 @@ const CheckoutPage: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Typography variant="h6" fontWeight="bold">Total:</Typography>
               <Typography variant="h6" fontWeight="bold">
-                {formatPrice(cart.totalAmount + shippingFee)}
+                {formatPrice(cart.totalAmount + (shippingFee || 0))}
               </Typography>
             </Box>
           </Paper>
