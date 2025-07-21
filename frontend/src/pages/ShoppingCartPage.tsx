@@ -396,18 +396,6 @@ const ShoppingCartPage: React.FC = () => {
               )}
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">
-                  Shipping
-                  {cart.shippingAmount === 0 && (
-                    <Chip label="FREE" size="small" color="success" sx={{ ml: 1 }} />
-                  )}
-                </Typography>
-                <Typography variant="body2">
-                  {cart.shippingAmount === 0 ? 'FREE' : formatPrice(cart.shippingAmount)}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Tax</Typography>
                 <Typography variant="body2">{formatPrice(cart.taxAmount)}</Typography>
               </Box>
@@ -421,7 +409,7 @@ const ShoppingCartPage: React.FC = () => {
                 Total
               </Typography>
               <Typography variant="h6" fontWeight="bold" color="primary">
-                {formatPrice(cart.totalAmount)}
+                {formatPrice(cart.subtotal + cart.taxAmount - (cart.discountAmount || 0))}
               </Typography>
             </Box>
 

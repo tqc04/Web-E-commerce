@@ -46,9 +46,9 @@ public class ShippingController {
      * Get communes by province ID
      */
     @GetMapping("/provinces/{provinceCode}/communes")
-    public ResponseEntity<List<ShippingService.Ward>> getCommunesByProvince(@PathVariable String provinceCode) {
+    public ResponseEntity<List<Map<String, Object>>> getCommunesByProvince(@PathVariable String provinceCode) {
         try {
-            List<ShippingService.Ward> communes = shippingService.getCommunesByProvince(provinceCode);
+            List<Map<String, Object>> communes = shippingService.getCommunesByProvince(provinceCode);
             return ResponseEntity.ok(communes);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
@@ -59,40 +59,12 @@ public class ShippingController {
      * Search communes by name within a province
      */
     @GetMapping("/provinces/{provinceCode}/communes/search")
-    public ResponseEntity<List<ShippingService.Ward>> searchCommunes(
+    public ResponseEntity<List<Map<String, Object>>> searchCommunes(
             @PathVariable String provinceCode, 
             @RequestParam String q) {
         try {
-            List<ShippingService.Ward> communes = shippingService.searchCommunes(provinceCode, q);
+            List<Map<String, Object>> communes = shippingService.searchCommunes(provinceCode, q);
             return ResponseEntity.ok(communes);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Get wards by district ID
-     */
-    @GetMapping("/wards/{districtId}")
-    public ResponseEntity<List<ShippingService.Ward>> getWards(@PathVariable Integer districtId) {
-        try {
-            List<ShippingService.Ward> wards = shippingService.getWards(districtId);
-            return ResponseEntity.ok(wards);
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().build();
-        }
-    }
-
-    /**
-     * Search wards by name within a district
-     */
-    @GetMapping("/wards/{districtId}/search")
-    public ResponseEntity<List<ShippingService.Ward>> searchWards(
-            @PathVariable Integer districtId, 
-            @RequestParam String q) {
-        try {
-            List<ShippingService.Ward> wards = shippingService.searchWards(districtId, q);
-            return ResponseEntity.ok(wards);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -104,19 +76,21 @@ public class ShippingController {
     @PostMapping("/calculate-fee")
     public ResponseEntity<Map<String, Object>> calculateShippingFee(@RequestBody Map<String, Object> request) {
         try {
-            Integer toDistrictId = (Integer) request.get("toDistrictId");
-            String toWardCode = (String) request.get("toWardCode");
+            String fromProvince = (String) request.get("fromProvince");
+            String fromCommune = (String) request.get("fromCommune");
+            String toProvince = (String) request.get("toProvince");
+            String toCommune = (String) request.get("toCommune");
             Integer insuranceValue = (Integer) request.get("insuranceValue");
             Integer weight = (Integer) request.get("weight");
 
-            if (toDistrictId == null || toWardCode == null) {
+            if (fromProvince == null || fromCommune == null || toProvince == null || toCommune == null) {
                 return ResponseEntity.badRequest().body(Map.of(
-                    "error", "Missing required fields: toDistrictId, toWardCode"
+                    "error", "Missing required fields: fromProvince, fromCommune, toProvince, toCommune"
                 ));
             }
 
-            BigDecimal shippingFee = shippingService.calculateShippingFee(
-                toDistrictId, toWardCode, insuranceValue, weight
+            BigDecimal shippingFee = shippingService.calculateShippingFeeByProvinceCommune(
+                fromProvince, fromCommune, toProvince, toCommune, insuranceValue, weight
             );
 
             return ResponseEntity.ok(Map.of(
