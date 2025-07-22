@@ -4,6 +4,8 @@ import com.example.project.entity.ChatSession;
 import com.example.project.entity.ChatMessage;
 import com.example.project.entity.Product;
 import com.example.project.service.ChatbotService;
+import com.example.project.dto.ChatSessionDTO;
+import com.example.project.dto.ChatMessageDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +15,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/chatbot")
-@CrossOrigin(origins = "*")
 public class ChatbotController {
 
     @Autowired
@@ -23,13 +24,13 @@ public class ChatbotController {
      * Tạo session chat mới
      */
     @PostMapping("/session")
-    public ResponseEntity<ChatSession> createChatSession(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ChatSessionDTO> createChatSession(@RequestBody Map<String, Object> request) {
         try {
             Long userId = Long.valueOf(request.get("userId").toString());
             String initialMessage = (String) request.get("initialMessage");
             
             ChatSession session = chatbotService.startChatSession(userId, initialMessage);
-            return ResponseEntity.ok(session);
+            return ResponseEntity.ok(ChatSessionDTO.from(session));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -39,13 +40,13 @@ public class ChatbotController {
      * Gửi tin nhắn và nhận phản hồi từ AI
      */
     @PostMapping("/message")
-    public ResponseEntity<ChatMessage> sendMessage(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<ChatMessageDTO> sendMessage(@RequestBody Map<String, Object> request) {
         try {
             Long sessionId = Long.valueOf(request.get("sessionId").toString());
             String message = (String) request.get("message");
             
             ChatMessage response = chatbotService.sendMessage(sessionId, message);
-            return ResponseEntity.ok(response);
+            return ResponseEntity.ok(ChatMessageDTO.from(response));
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -81,10 +82,11 @@ public class ChatbotController {
      * Lấy danh sách session của user
      */
     @GetMapping("/user/{userId}/sessions")
-    public ResponseEntity<List<ChatSession>> getUserSessions(@PathVariable Long userId) {
+    public ResponseEntity<List<ChatSessionDTO>> getUserSessions(@PathVariable Long userId) {
         try {
             List<ChatSession> sessions = chatbotService.getUserChatSessions(userId);
-            return ResponseEntity.ok(sessions);
+            List<ChatSessionDTO> dtoList = sessions.stream().map(ChatSessionDTO::from).toList();
+            return ResponseEntity.ok(dtoList);
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

@@ -6,6 +6,10 @@ import com.example.project.repository.OrderRepository;
 import com.example.project.repository.OrderStatusHistoryRepository;
 import com.example.project.repository.UserRepository;
 import com.example.project.repository.ProductRepository;
+import com.example.project.repository.InventoryItemRepository;
+import com.example.project.entity.InventoryItem;
+import com.example.project.entity.Warehouse;
+import com.example.project.repository.WarehouseRepository;
 import com.example.project.service.ai.AIService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -16,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -34,14 +39,30 @@ public class OrderService {
     private ProductRepository productRepository;
     
     @Autowired
+    private InventoryService inventoryService;
+    
+    @Autowired
+    private InventoryItemRepository inventoryItemRepository;
+    
+    @Autowired
+    private WarehouseRepository warehouseRepository;
+    
+    @Autowired
+    private ShippingService shippingService;
+    
+    @Autowired
     private AIService aiService;
     
     /**
-     * Create new order with AI fraud detection
+     * Create new order
      */
     public Order createOrder(Long userId, List<OrderItemRequest> items, 
                            String shippingAddress, String billingAddress,
-                           String paymentMethod, String ipAddress, String userAgent) {
+                           String paymentMethod, BigDecimal shippingFee, String note, String ipAddress, String userAgent) {
+        
+        System.out.println("OrderService.createOrder - userId: " + userId + ", items: " + items.size());
+        
+        try {
         
         Optional<User> userOpt = userRepository.findById(userId);
         if (userOpt.isEmpty()) {
@@ -49,71 +70,122 @@ public class OrderService {
         }
         
         User user = userOpt.get();
+        System.out.println("Found user: " + user.getUsername());
         
         // Create order
         Order order = new Order();
         order.setUser(user);
         order.setOrderNumber(generateOrderNumber());
-        order.setShippingAddress(shippingAddress);
-        order.setBillingAddress(billingAddress);
+        order.setShippingAddress(shippingAddress); // JSON string
+        order.setBillingAddress(billingAddress);   // JSON string
         order.setPaymentMethod(paymentMethod);
         order.setStatus(OrderStatus.PENDING); // Start with PENDING
+        order.setNotes(note); // Gán note vào trường notes
+        
+        // Set timestamps
+        LocalDateTime now = LocalDateTime.now();
+        order.setCreatedAt(now);
+        order.setUpdatedAt(now);
+        
+        System.out.println("Created order object with number: " + order.getOrderNumber());
         
         // Add order items
         BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderItemRequest itemRequest : items) {
+            System.out.println("Processing item - productId: " + itemRequest.getProductId() + ", quantity: " + itemRequest.getQuantity());
+            
             Optional<Product> productOpt = productRepository.findById(itemRequest.getProductId());
             if (productOpt.isEmpty()) {
                 throw new ProductNotFoundException("Product not found with id: " + itemRequest.getProductId());
             }
             
             Product product = productOpt.get();
+            
+            // Get stock from both product and inventory
+            Integer productStock = product.getStockQuantity();
+            Integer inventoryStock = inventoryService.getAvailableStockForProduct(product.getId());
+            
+            // Use the lower of the two values for safety
+            Integer availableStock = Math.min(
+                productStock != null ? productStock : 0,
+                inventoryStock != null ? inventoryStock : 0
+            );
+            
+            System.out.println("Found product: " + product.getName() + 
+                ", product stock: " + productStock + 
+                ", inventory stock: " + inventoryStock + 
+                ", available stock: " + availableStock);
+            
+            // Check stock availability
+            if (availableStock < itemRequest.getQuantity()) {
+                throw new RuntimeException("Insufficient stock for product " + product.getName() + 
+                    ". Available: " + availableStock + ", Requested: " + itemRequest.getQuantity());
+            }
+            
             OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
             orderItem.setQuantity(itemRequest.getQuantity());
             orderItem.setPrice(product.getPrice());
+            orderItem.setCreatedAt(LocalDateTime.now());
+            orderItem.setUpdatedAt(LocalDateTime.now());
             
             order.getOrderItems().add(orderItem);
             subtotal = subtotal.add(product.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity())));
+            
+            System.out.println("Added order item. Subtotal now: " + subtotal);
+            
+            // Update both product stock and inventory stock
+            Integer newProductStock = (productStock != null ? productStock : 0) - itemRequest.getQuantity();
+            Integer newInventoryStock = (inventoryStock != null ? inventoryStock : 0) - itemRequest.getQuantity();
+            
+            // Update product stock
+            product.setStockQuantity(newProductStock);
+            productRepository.save(product);
+            
+            // Update inventory stock
+            inventoryService.updateAvailableStock(product.getId(), newInventoryStock);
+            
+            System.out.println("Updated stock for product " + product.getId() + 
+                " - Product: " + productStock + " -> " + newProductStock + 
+                ", Inventory: " + inventoryStock + " -> " + newInventoryStock);
         }
         
         order.setSubtotal(subtotal);
-        
-        // Calculate tax and shipping
+        order.setShippingAmount(shippingFee);
+        // Calculate tax
         BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.1)); // 10% tax
-        BigDecimal shippingAmount = BigDecimal.valueOf(25.00); // Fixed shipping fee
-        if (subtotal.compareTo(BigDecimal.valueOf(500)) >= 0) {
-            shippingAmount = BigDecimal.ZERO; // Free shipping over $500
-        }
-        
         order.setTaxAmount(taxAmount);
-        order.setShippingAmount(shippingAmount);
-        order.setTotalAmount(subtotal.add(taxAmount).add(shippingAmount));
+        order.setTotalAmount(subtotal.add(taxAmount).add(shippingFee));
         
-        // AI Fraud Detection
-        FraudAnalysis fraudAnalysis = analyzeOrderForFraud(order, user, ipAddress, userAgent);
-        order.setFraudScore(fraudAnalysis.getFraudScore());
-        order.setFraudAnalysis(fraudAnalysis.getAnalysis());
-        order.setRiskLevel(fraudAnalysis.getRiskLevel());
-        order.setFlaggedForReview(fraudAnalysis.isFlaggedForReview());
+        System.out.println("Order totals - subtotal: " + subtotal + ", tax: " + taxAmount + ", shipping: " + shippingFee + ", total: " + order.getTotalAmount());
+        
+        // AI Fraud Detection (disabled for now)
+        order.setFraudScore(0.1); // Low risk by default
+        order.setFraudAnalysis("Fraud detection disabled");
+        order.setRiskLevel(RiskLevel.LOW);
+        order.setFlaggedForReview(false);
         
         // Save order
+        System.out.println("Saving order to database...");
         Order savedOrder = orderRepository.save(order);
+        System.out.println("Order saved with ID: " + savedOrder.getId());
         
         // Create initial status history
-        createStatusHistory(savedOrder, null, OrderStatus.PENDING, "System", "Order created", ipAddress, userAgent, true);
+        System.out.println("Creating status history...");
+        createStatusHistory(savedOrder, OrderStatus.PENDING, OrderStatus.PENDING, "System", "Order created", ipAddress, userAgent, true);
         
-        // Auto-approve low risk orders, require manual approval for others
-        if (fraudAnalysis.getRiskLevel() == RiskLevel.LOW && fraudAnalysis.getFraudScore() < 0.3) {
-            // Auto approve low risk orders
-            updateOrderStatus(savedOrder.getId(), OrderStatus.PENDING_APPROVAL, "System auto-progression", "System", ipAddress, userAgent);
-        } else {
-            // Flag for manual review
-            flagOrderForReview(savedOrder, "High fraud risk detected - requires manual approval");
-        }
+        // Auto-approve all orders for now (fraud detection disabled)
+        System.out.println("Updating order status...");
+        updateOrderStatus(savedOrder.getId(), OrderStatus.PENDING_APPROVAL, "System auto-progression", "System", ipAddress, userAgent);
         
         return savedOrder;
+        
+        } catch (Exception e) {
+            System.err.println("Error creating order: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
     
     /**
@@ -284,28 +356,23 @@ public class OrderService {
             // Collect order data for analysis
             String orderData = buildOrderAnalysisData(order, user, ipAddress, userAgent);
             
-            String prompt = """
-                Analyze this e-commerce order for potential fraud indicators:
-                
-                {orderData}
-                
-                Consider these fraud indicators:
-                - Order value vs user history
-                - Shipping/billing address mismatch
-                - Unusual purchase patterns
-                - High-value orders from new users
-                - Multiple high-value items
-                - Suspicious timing patterns
-                
-                Provide analysis in JSON format:
-                {
-                  "fraudScore": 0.0-1.0,
-                  "riskLevel": "LOW/MEDIUM/HIGH/CRITICAL",
-                  "indicators": ["indicator1", "indicator2"],
-                  "analysis": "Brief explanation",
-                  "recommendation": "APPROVE/REVIEW/DECLINE"
-                }
-                """;
+            String prompt = "Analyze this e-commerce order for potential fraud indicators:\n\n" +
+                orderData + "\n\n" +
+                "Consider these fraud indicators:\n" +
+                "- Order value vs user history\n" +
+                "- Shipping/billing address mismatch\n" +
+                "- Unusual purchase patterns\n" +
+                "- High-value orders from new users\n" +
+                "- Multiple high-value items\n" +
+                "- Suspicious timing patterns\n\n" +
+                "Provide analysis in JSON format:\n" +
+                "{\n" +
+                "  \"fraudScore\": 0.0-1.0,\n" +
+                "  \"riskLevel\": \"LOW/MEDIUM/HIGH/CRITICAL\",\n" +
+                "  \"indicators\": [\"indicator1\", \"indicator2\"],\n" +
+                "  \"analysis\": \"Brief explanation\",\n" +
+                "  \"recommendation\": \"APPROVE/REVIEW/DECLINE\"\n" +
+                "}";
             
             Map<String, Object> variables = Map.of("orderData", orderData);
             String response = aiService.generateText(prompt, variables);
@@ -335,7 +402,7 @@ public class OrderService {
         data.append("\nUser Profile:\n");
         data.append("- User ID: ").append(user.getId()).append("\n");
         data.append("- Account Age: ").append(user.getCreatedAt()).append("\n");
-        data.append("- Previous Orders: ").append(user.getOrders().size()).append("\n");
+        data.append("- Previous Orders: ").append("N/A").append("\n"); // Avoid lazy loading
         data.append("- Email Verified: ").append(user.isEmailVerified()).append("\n");
         
         data.append("\nAddress Information:\n");
@@ -401,10 +468,10 @@ public class OrderService {
             indicators.add("high_order_value");
         }
         
-        // Check new user with expensive order
-        if (user.getOrders().size() == 0 && order.getTotalAmount().compareTo(BigDecimal.valueOf(500)) > 0) {
-            fraudScore += 0.4;
-            indicators.add("new_user_expensive_order");
+        // Check new user with expensive order (simplified check)
+        if (order.getTotalAmount().compareTo(BigDecimal.valueOf(500)) > 0) {
+            fraudScore += 0.2;
+            indicators.add("expensive_order");
         }
         
         // Check address mismatch
@@ -452,26 +519,21 @@ public class OrderService {
         try {
             String orderAnalysis = buildOrderAnalysisData(order, order.getUser(), "", "");
             
-            String prompt = """
-                Analyze this order and provide business insights:
-                
-                {orderAnalysis}
-                
-                Provide insights about:
-                1. Customer behavior patterns
-                2. Product preferences
-                3. Potential upselling opportunities
-                4. Risk assessment
-                
-                Return structured analysis.
-                """;
+            String prompt = "Analyze this order and provide business insights:\n\n" +
+                orderAnalysis + "\n\n" +
+                "Provide insights about:\n" +
+                "1. Customer behavior patterns\n" +
+                "2. Product preferences\n" +
+                "3. Potential upselling opportunities\n" +
+                "4. Risk assessment\n\n" +
+                "Return structured analysis.";
             
             Map<String, Object> variables = Map.of("orderAnalysis", orderAnalysis);
             String response = aiService.generateText(prompt, variables);
             
             return new OrderInsights(
                     order.getId(),
-                    "Customer shows preference for " + order.getOrderItems().get(0).getProduct().getCategory().getName(),
+                    "Customer shows preference for products",
                     List.of("Consider similar products", "Bundle recommendations available"),
                     order.getRiskLevel().toString(),
                     response

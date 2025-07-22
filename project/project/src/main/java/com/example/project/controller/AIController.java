@@ -1,7 +1,6 @@
 package com.example.project.controller;
 
 import com.example.project.ai.AIEnterpriseService;
-import com.example.project.service.ai.VectorStoreService;
 import com.example.project.service.ai.AIContentService;
 import com.example.project.service.ai.AIService.SentimentAnalysis;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,14 +13,10 @@ import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/ai")
-@CrossOrigin(origins = "*")
 public class AIController {
 
     @Autowired
     private AIEnterpriseService aiService;
-
-    @Autowired
-    private VectorStoreService vectorStoreService;
 
     @Autowired
     private AIContentService aiContentService;
@@ -122,7 +117,7 @@ public class AIController {
     }
 
     /**
-     * Tìm kiếm tương tự bằng vector
+     * Tìm kiếm tương tự bằng vector (placeholder implementation)
      */
     @PostMapping("/vector-search")
     public ResponseEntity<List<Map<String, Object>>> vectorSearch(@RequestBody Map<String, Object> request) {
@@ -130,18 +125,10 @@ public class AIController {
             String query = (String) request.get("query");
             Integer limit = (Integer) request.get("limit");
             
-            var documents = vectorStoreService.searchSimilar(query, limit != null ? limit : 10);
+            // Placeholder implementation - vector search not available
+            System.out.println("Vector search not available for query: " + query);
             
-            List<Map<String, Object>> results = documents.stream()
-                .map(doc -> {
-                    Map<String, Object> result = new HashMap<>();
-                    result.put("content", doc.getContent());
-                    result.put("metadata", doc.getMetadata());
-                    return result;
-                })
-                .toList();
-            
-            return ResponseEntity.ok(results);
+            return ResponseEntity.ok(List.of());
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

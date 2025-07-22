@@ -176,9 +176,9 @@ const ShoppingCartPage: React.FC = () => {
         </Typography>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <Chip label={cart.totalItems} color="primary" size="small" />
-          <Typography variant="body1" color="text.secondary">
+          <Box component="span" sx={{ color: 'text.secondary' }}>
             {cart.totalItems} {cart.totalItems === 1 ? 'item' : 'items'} in your cart
-          </Typography>
+          </Box>
         </Box>
       </Box>
 
@@ -194,7 +194,7 @@ const ShoppingCartPage: React.FC = () => {
                     <Grid item xs={12} sm={3}>
                       <Box
                         component="img"
-                        src={item.productImage || '/api/placeholder/120/120'}
+                        src={item.productImage || `https://via.placeholder.com/120x120?text=${encodeURIComponent(item.productName)}`}
                         alt={item.productName}
                         sx={{ 
                           width: '100%',
@@ -396,18 +396,6 @@ const ShoppingCartPage: React.FC = () => {
               )}
 
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">
-                  Shipping
-                  {cart.shippingAmount === 0 && (
-                    <Chip label="FREE" size="small" color="success" sx={{ ml: 1 }} />
-                  )}
-                </Typography>
-                <Typography variant="body2">
-                  {cart.shippingAmount === 0 ? 'FREE' : formatPrice(cart.shippingAmount)}
-                </Typography>
-              </Box>
-
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                 <Typography variant="body2">Tax</Typography>
                 <Typography variant="body2">{formatPrice(cart.taxAmount)}</Typography>
               </Box>
@@ -421,7 +409,7 @@ const ShoppingCartPage: React.FC = () => {
                 Total
               </Typography>
               <Typography variant="h6" fontWeight="bold" color="primary">
-                {formatPrice(cart.totalAmount)}
+                {formatPrice(cart.subtotal + cart.taxAmount - (cart.discountAmount || 0))}
               </Typography>
             </Box>
 
