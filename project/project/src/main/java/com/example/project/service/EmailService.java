@@ -41,22 +41,21 @@ public class EmailService {
 
     /**
      * Send password reset email
-     * TODO: Implement actual email sending with SMTP/Email service provider
      */
     public void sendPasswordResetEmail(User user, String resetToken) {
         try {
-            // For now, just log the password reset email
-            logger.info("Sending password reset email to: {} with token: {}", 
-                       user.getEmail(), resetToken);
-            
-            // TODO: Implement actual email sending
-            // Example with JavaMailSender:
-            // SimpleMailMessage message = new SimpleMailMessage();
-            // message.setTo(user.getEmail());
-            // message.setSubject("Password Reset");
-            // message.setText("Reset your password: " + resetUrl);
-            // mailSender.send(message);
-            
+            String to = user.getEmail();
+            String subject = "Password Reset Request";
+            String resetUrl = "http://localhost:3000/forgot-password?token=" + resetToken;
+            String text = "You requested to reset your password. Please click the link below to set a new password:\n" + resetUrl + "\n\nIf you did not request this, please ignore this email.";
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(text);
+            mailSender.send(message);
+
+            logger.info("Sent password reset email to: {} with token: {}", user.getEmail(), resetToken);
         } catch (Exception e) {
             logger.error("Failed to send password reset email to: {}", user.getEmail(), e);
             throw new RuntimeException("Failed to send password reset email", e);

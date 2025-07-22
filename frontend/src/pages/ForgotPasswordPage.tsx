@@ -6,7 +6,6 @@ import {
   Button, 
   Typography, 
   Box, 
-  Alert,
   Link,
   InputAdornment,
   Stepper,
@@ -23,6 +22,7 @@ import {
 } from '@mui/icons-material'
 import { Link as RouterLink, useNavigate, useSearchParams } from 'react-router-dom'
 import { apiService } from '../services/api'
+import { useNotification } from '../contexts/NotificationContext';
 
 type Step = 'email' | 'reset'
 
@@ -30,6 +30,7 @@ const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const resetToken = searchParams.get('token')
+  const { notify } = useNotification();
   
   const [currentStep, setCurrentStep] = useState<Step>(resetToken ? 'reset' : 'email')
   const [email, setEmail] = useState('')
@@ -38,7 +39,6 @@ const ForgotPasswordPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -53,37 +53,26 @@ const ForgotPasswordPage: React.FC = () => {
     event.preventDefault()
     
     if (!email.trim()) {
-      setMessage({ type: 'error', text: 'Email is required' })
+      notify('Email is required', 'error')
       return
     }
     
     if (!validateEmail(email)) {
-      setMessage({ type: 'error', text: 'Please enter a valid email address' })
+      notify('Please enter a valid email address', 'error')
       return
     }
 
     setIsLoading(true)
-    setMessage(null)
 
     try {
       const response = await apiService.forgotPassword(email)
-      
       if (response.success) {
-        setMessage({
-          type: 'success',
-          text: 'Password reset instructions have been sent to your email. Please check your inbox.'
-        })
+        notify('Password reset instructions have been sent to your email. Please check your inbox.', 'success')
       } else {
-        setMessage({
-          type: 'error',
-          text: response.message || 'Failed to send reset email'
-        })
+        notify(response.message || 'Failed to send reset email', 'error')
       }
     } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.message || 'Failed to send reset email. Please try again.'
-      })
+      notify(error.response?.data?.message || 'Failed to send reset email. Please try again.', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -93,52 +82,39 @@ const ForgotPasswordPage: React.FC = () => {
     event.preventDefault()
     
     if (!password.trim()) {
-      setMessage({ type: 'error', text: 'Password is required' })
+      notify('Password is required', 'error')
       return
     }
     
     if (!validatePassword(password)) {
-      setMessage({ type: 'error', text: 'Password must be at least 6 characters long' })
+      notify('Password must be at least 6 characters long', 'error')
       return
     }
     
     if (password !== confirmPassword) {
-      setMessage({ type: 'error', text: 'Passwords do not match' })
+      notify('Passwords do not match', 'error')
       return
     }
 
     if (!resetToken) {
-      setMessage({ type: 'error', text: 'Invalid reset token' })
+      notify('Invalid reset token', 'error')
       return
     }
 
     setIsLoading(true)
-    setMessage(null)
 
     try {
       const response = await apiService.resetPassword(resetToken, password)
-      
       if (response.success) {
-        setMessage({
-          type: 'success',
-          text: 'Password reset successfully! You can now login with your new password.'
-        })
-        
-        // Redirect to login after 3 seconds
+        notify('Password reset successfully! You can now login with your new password.', 'success')
         setTimeout(() => {
           navigate('/login')
-        }, 3000)
+        }, 2000)
       } else {
-        setMessage({
-          type: 'error',
-          text: response.message || 'Failed to reset password'
-        })
+        notify(response.message || 'Failed to reset password', 'error')
       }
     } catch (error: any) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.message || 'Failed to reset password. Please try again.'
-      })
+      notify(error.response?.data?.message || 'Failed to reset password. Please try again.', 'error')
     } finally {
       setIsLoading(false)
     }
@@ -169,12 +145,6 @@ const ForgotPasswordPage: React.FC = () => {
             </Step>
           ))}
         </Stepper>
-
-        {message && (
-          <Alert severity={message.type} sx={{ mb: 3 }}>
-            {message.text}
-          </Alert>
-        )}
 
         {currentStep === 'email' ? (
           <Box component="form" onSubmit={handleEmailSubmit}>

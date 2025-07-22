@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Box, CssBaseline, ThemeProvider } from '@mui/material'
 
 import { CartProvider } from './contexts/CartContext'
@@ -34,23 +34,28 @@ import { NotificationProvider } from './contexts/NotificationContext';
 
 
 function App() {
+  const location = useLocation();
+  const authPaths = ['/login', '/signup', '/forgot-password', '/verify-email'];
+  const isAuthPage = authPaths.includes(location.pathname);
   return (
     <NotificationProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
           <CartProvider>
-            <Box sx={{ 
-              display: 'flex', 
-              flexDirection: 'column', 
-              minHeight: '100vh'
+            <Navbar />
+            <Box sx={{
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: isAuthPage
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                : 'none',
+              alignItems: isAuthPage ? 'center' : 'stretch',
+              justifyContent: isAuthPage ? 'center' : 'flex-start',
+              py: isAuthPage ? 8 : 0
             }}>
-              <Navbar />
-              <Box component="main" sx={{ 
-                flexGrow: 1, 
-                py: { xs: 2, sm: 3, md: 4 }
-              }}>
-                <Routes>
+              <Routes>
                   <Route path="/" element={<HomePage />} />
                   <Route path="/products" element={<ProductsPage />} />
                   <Route path="/products/:productId" element={<ProductDetailPage />} />
@@ -71,9 +76,8 @@ function App() {
                   <Route path="/verify-email" element={<VerifyEmailPage />} />
 
                 </Routes>
-              </Box>
-              <Footer />
             </Box>
+            {!isAuthPage && <Footer />}
           </CartProvider>
         </AuthProvider>
       </ThemeProvider>

@@ -112,19 +112,6 @@ const LoginPage: React.FC = () => {
               </Typography>
             </Box>
 
-            {error && (
-              <Alert 
-                severity="error" 
-                sx={{ 
-                  width: '100%', 
-                  mb: 3,
-                  borderRadius: 2
-                }}
-              >
-                {error}
-              </Alert>
-            )}
-
             {/* Social Login Buttons */}
             <Box sx={{ width: '100%', mb: 3 }}>
               <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ mb: 2 }}>
