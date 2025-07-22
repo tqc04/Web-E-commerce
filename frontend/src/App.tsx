@@ -25,6 +25,12 @@ import ProductDetailPage from './pages/ProductDetailPage'
 import ChatbotPage from './pages/ChatbotPage'
 import SupportPage from './pages/SupportPage'
 
+
+
+
+
+
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -59,6 +65,7 @@ function App() {
                 <Route path="/reviews" element={<ReviewsPage />} />
                 <Route path="/ai-assistant" element={<ChatbotPage />} />
                 <Route path="/support" element={<SupportPage />} />
+
               </Routes>
             </Box>
             <Footer />

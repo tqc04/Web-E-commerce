@@ -58,4 +58,16 @@ public class ProductService {
     public boolean existsById(Long id) {
         return productRepository.existsById(id);
     }
+
+    /**
+     * Update stock for all products
+     */
+    public int updateAllStock(Integer stockQuantity) {
+        List<Product> products = productRepository.findAll();
+        for (Product product : products) {
+            product.setStockQuantity(stockQuantity);
+        }
+        productRepository.saveAll(products);
+        return products.size();
+    }
 } 

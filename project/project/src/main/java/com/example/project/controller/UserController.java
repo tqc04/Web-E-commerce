@@ -16,7 +16,6 @@ import com.example.project.dto.UserCreateRequest;
 
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin(origins = "*")
 public class UserController {
 
     @Autowired

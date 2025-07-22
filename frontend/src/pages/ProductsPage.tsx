@@ -80,7 +80,7 @@ const ProductsPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState('all');
-  const [priceRange, setPriceRange] = useState<number[]>([0, 2000]);
+  const [priceRange, setPriceRange] = useState<number[]>([0, 1000000000]);
   const [sortBy, setSortBy] = useState('featured');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
@@ -189,6 +189,15 @@ const ProductsPage: React.FC = () => {
     { value: 'GameGear', label: 'GameGear' },
   ];
 
+  // Thêm hàm format VND
+  const formatVND = (price: number) => {
+    return new Intl.NumberFormat('vi-VN', {
+      style: 'currency',
+      currency: 'VND',
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+
   useEffect(() => {
     const fetchProducts = async () => {
       try {
@@ -285,7 +294,7 @@ const ProductsPage: React.FC = () => {
     setSearchTerm('');
     setSelectedCategory('all');
     setSelectedBrand('all');
-    setPriceRange([0, 2000]);
+    setPriceRange([0, 1000000000]);
     setSortBy('featured');
   };
 
@@ -418,7 +427,7 @@ const ProductsPage: React.FC = () => {
           </Grid>
 
           {/* Active Filters */}
-          {(searchTerm || selectedCategory !== 'all' || selectedBrand !== 'all' || priceRange[0] > 0 || priceRange[1] < 2000) && (
+          {(searchTerm || selectedCategory !== 'all' || selectedBrand !== 'all' || priceRange[0] > 0 || priceRange[1] < 1000000000) && (
             <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
               <Typography variant="body2" color="text.secondary">
                 Active filters:
@@ -444,10 +453,10 @@ const ProductsPage: React.FC = () => {
                   size="small"
                 />
               )}
-              {(priceRange[0] > 0 || priceRange[1] < 2000) && (
+              {(priceRange[0] > 0 || priceRange[1] < 1000000000) && (
                 <Chip
-                  label={`Price: $${priceRange[0]} - $${priceRange[1]}`}
-                  onDelete={() => setPriceRange([0, 2000])}
+                  label={`Giá: ${formatVND(priceRange[0])} - ${formatVND(priceRange[1])}`}
+                  onDelete={() => setPriceRange([0, 1000000000])}
                   size="small"
                 />
               )}
@@ -577,7 +586,7 @@ const ProductsPage: React.FC = () => {
                     {/* Price */}
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
                       <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'primary.main' }}>
-                        ${product.price}
+                        {formatVND(product.price)}
                       </Typography>
                     </Box>
 
@@ -664,12 +673,12 @@ const ProductsPage: React.FC = () => {
                 onChange={(e, newValue) => setPriceRange(newValue as number[])}
                 valueLabelDisplay="auto"
                 min={0}
-                max={2000}
-                step={50}
+                max={1000000000}
+                step={100000}
               />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                <Typography variant="body2">${priceRange[0]}</Typography>
-                <Typography variant="body2">${priceRange[1]}</Typography>
+                <Typography variant="body2">{formatVND(priceRange[0])}</Typography>
+                <Typography variant="body2">{formatVND(priceRange[1])}</Typography>
               </Box>
             </Box>
           </AccordionDetails>

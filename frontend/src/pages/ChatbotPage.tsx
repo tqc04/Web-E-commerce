@@ -50,13 +50,13 @@ interface QuickAction {
 }
 
 const ChatbotPage: React.FC = () => {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, user } = useAuth()
   const messagesEndRef = useRef<HTMLDivElement>(null)
   
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-  const [sessionId, setSessionId] = useState<string>('')
+  const [sessionId, setSessionId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const quickActions: QuickAction[] = [
@@ -86,20 +86,42 @@ const ChatbotPage: React.FC = () => {
     }
   ]
 
-  useEffect(() => {
-    // Generate a session ID when component mounts
-    setSessionId(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
-    
-    // Add welcome message
-    const welcomeMessage: ChatMessage = {
-      sessionId: '',
-      message: '',
-      response: "Hello! I'm your AI shopping assistant. How can I help you today? I can help you find products, check orders, provide recommendations, and answer questions about our store.",
-      messageType: 'BOT',
-      timestamp: new Date().toISOString()
+  // Function to create a new chat session and set sessionId
+  const createNewSession = async (initialMessage: string = '') => {
+    if (!user) return
+    try {
+      const response = await apiService.createChatSession(user.id, initialMessage)
+      if (response.success && response.data && response.data.id) {
+        setSessionId(response.data.id)
+        return response.data.id
+      }
+    } catch (e) {
+      setError('Failed to create chat session')
     }
-    setMessages([welcomeMessage])
-  }, [])
+    return null
+  }
+
+  useEffect(() => {
+    // On mount, create a new session
+    const init = async () => {
+      let newSessionId = null
+      if (isAuthenticated && user) {
+        newSessionId = await createNewSession()
+      }
+      // Add welcome message
+      const welcomeMessage: ChatMessage = {
+        sessionId: '',
+        message: '',
+        response: "Hello! I'm your AI shopping assistant. How can I help you today? I can help you find products, check orders, provide recommendations, and answer questions about our store.",
+        messageType: 'BOT',
+        timestamp: new Date().toISOString()
+      }
+      setMessages([welcomeMessage])
+      if (newSessionId) setSessionId(newSessionId)
+    }
+    init()
+    // eslint-disable-next-line
+  }, [isAuthenticated, user])
 
   useEffect(() => {
     scrollToBottom()
@@ -114,13 +136,20 @@ const ChatbotPage: React.FC = () => {
     
     if (!messageToSend) return
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !user) {
       setError('Please log in to use the AI assistant')
       return
     }
 
+    if (!sessionId) {
+      // Create session if not exists
+      const newSessionId = await createNewSession(messageToSend)
+      if (!newSessionId) return
+      setSessionId(newSessionId)
+    }
+
     const userMessage: ChatMessage = {
-      sessionId,
+      sessionId: sessionId ? sessionId.toString() : '',
       message: messageToSend,
       messageType: 'USER',
       timestamp: new Date().toISOString()
@@ -132,11 +161,11 @@ const ChatbotPage: React.FC = () => {
     setError(null)
 
     try {
-      const response = await apiService.sendChatMessage(messageToSend, sessionId)
+      const response = await apiService.sendChatMessage(messageToSend, sessionId!)
       
       if (response.success) {
         const botMessage: ChatMessage = {
-          sessionId: response.data.sessionId,
+          sessionId: response.data.sessionId ? response.data.sessionId.toString() : '',
           message: response.data.message,
           response: response.data.response,
           messageType: 'BOT',
@@ -150,7 +179,7 @@ const ChatbotPage: React.FC = () => {
       
       // Fallback response for demo purposes
       const fallbackResponse: ChatMessage = {
-        sessionId,
+        sessionId: sessionId ? sessionId.toString() : '',
         message: '',
         response: "I apologize, but I'm currently experiencing technical difficulties. Please try again later or contact our support team for assistance.",
         messageType: 'BOT',
@@ -171,9 +200,14 @@ const ChatbotPage: React.FC = () => {
     }
   }
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
     setMessages([])
-    setSessionId(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`)
+    // Create a new session on clear
+    let newSessionId = null
+    if (isAuthenticated && user) {
+      newSessionId = await createNewSession()
+    }
+    setSessionId(newSessionId)
     
     // Add welcome message again
     const welcomeMessage: ChatMessage = {

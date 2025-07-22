@@ -5,6 +5,7 @@ import com.example.project.entity.Order;
 import com.example.project.entity.OrderStatus;
 import com.example.project.entity.OrderStatusHistory;
 import com.example.project.service.OrderService;
+import com.example.project.service.CartService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -12,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,11 +21,27 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/orders")
-@CrossOrigin(origins = "*")
 public class OrderController {
 
     @Autowired
     private OrderService orderService;
+    
+    @Autowired
+    private CartService cartService;
+
+    /**
+     * Get all orders (with pagination)
+     */
+    @GetMapping
+    public ResponseEntity<Page<OrderDTO>> getAllOrders(Pageable pageable) {
+        try {
+            Page<Order> orders = orderService.getAllOrders(pageable);
+            Page<OrderDTO> orderDTOs = orders.map(OrderDTO::from);
+            return ResponseEntity.ok(orderDTOs);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
 
     /**
      * Get order by ID
@@ -66,11 +84,15 @@ public class OrderController {
             String shippingAddress = (String) orderRequest.get("shippingAddress");
             String billingAddress = (String) orderRequest.get("billingAddress");
             String paymentMethod = (String) orderRequest.get("paymentMethod");
-            
+            String note = (String) orderRequest.get("note");
+            BigDecimal shippingFee = orderRequest.get("shippingFee") != null
+                ? new BigDecimal(orderRequest.get("shippingFee").toString())
+                : BigDecimal.ZERO;
+
             // Get IP address and user agent
-            String ipAddress = getClientIpAddress(request);
+            String ipAddress = request.getRemoteAddr();
             String userAgent = request.getHeader("User-Agent");
-            
+
             // Parse order items
             List<Map<String, Object>> itemsData = (List<Map<String, Object>>) orderRequest.get("items");
             List<OrderService.OrderItemRequest> items = itemsData.stream()
@@ -80,11 +102,15 @@ public class OrderController {
                 ))
                 .collect(Collectors.toList());
 
-            Order createdOrder = orderService.createOrder(userId, items, shippingAddress, billingAddress, paymentMethod, ipAddress, userAgent);
+            // Gọi service, truyền shippingFee và note
+            Order createdOrder = orderService.createOrder(userId, items, shippingAddress, billingAddress, paymentMethod, shippingFee, note, ipAddress, userAgent);
             OrderDTO orderDTO = OrderDTO.from(createdOrder);
-            
+
+            // Clear cart after successful order
+            cartService.clearCartAfterOrder(userId, request.getSession());
+
             return ResponseEntity.ok(orderDTO);
-            
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -101,7 +127,7 @@ public class OrderController {
         try {
             String reason = cancelRequest.getOrDefault("reason", "Customer cancellation");
             String cancelledBy = cancelRequest.getOrDefault("cancelledBy", "customer");
-            String ipAddress = getClientIpAddress(request);
+            String ipAddress = request.getRemoteAddr();
             String userAgent = request.getHeader("User-Agent");
 
             orderService.cancelOrder(orderId, reason, cancelledBy, ipAddress, userAgent);

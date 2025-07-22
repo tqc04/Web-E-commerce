@@ -145,6 +145,8 @@ const AdminPage: React.FC = () => {
     { id: 3, code: 'NEWYEAR', discount: '50%', validUntil: '2024-01-01', usage: 100, maxUsage: 100, status: 'Expired' },
   ]);
 
+  const [productImages, setProductImages] = useState<{ file: File; preview: string }[]>([]);
+
   useEffect(() => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -165,10 +167,16 @@ const AdminPage: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setDialogType('');
+    setProductImages([]); // Clear images on dialog close
   };
 
   const handleSnackbarClose = () => {
     setSnackbar({ ...snackbar, open: false });
+  };
+
+  const handleProductImagesChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    setProductImages(files.map(file => ({ file, preview: URL.createObjectURL(file) })));
   };
 
   const getStatusColor = (status: string) => {
@@ -206,9 +214,9 @@ const AdminPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: 4 }}>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
+      <Box sx={{ mb: 5 }}>
         <Typography variant="h3" component="h1" sx={{ fontWeight: 'bold', mb: 1 }}>
           Admin Dashboard
         </Typography>
@@ -218,9 +226,9 @@ const AdminPage: React.FC = () => {
       </Box>
 
       {/* Stats Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3 }}>
+      <Grid container spacing={5} sx={{ mb: 7, maxWidth: 1300, mx: 'auto' }}>
+        <Grid item xs={12} sm={6} md={3} display="flex">
+          <Card sx={{ borderRadius: 3, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
@@ -241,9 +249,8 @@ const AdminPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3 }}>
+        <Grid item xs={12} sm={6} md={3} display="flex">
+          <Card sx={{ borderRadius: 3, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
@@ -264,9 +271,8 @@ const AdminPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3 }}>
+        <Grid item xs={12} sm={6} md={3} display="flex">
+          <Card sx={{ borderRadius: 3, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
@@ -287,9 +293,8 @@ const AdminPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-
-        <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3 }}>
+        <Grid item xs={12} sm={6} md={3} display="flex">
+          <Card sx={{ borderRadius: 3, width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', height: '100%' }}>
             <CardContent>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Box>
@@ -313,7 +318,7 @@ const AdminPage: React.FC = () => {
       </Grid>
 
       {/* Main Content Tabs */}
-      <Paper sx={{ borderRadius: 3 }}>
+      <Paper sx={{ borderRadius: 3, p: 2, mb: 4, mt: 2, width: '100%', maxWidth: 1300, mx: 'auto' }}>
         <Tabs
           value={tabValue}
           onChange={handleTabChange}
@@ -336,15 +341,18 @@ const AdminPage: React.FC = () => {
           <Tab icon={<LocalOffer />} label="Vouchers" />
           <Tab icon={<Analytics />} label="Analytics" />
           <Tab icon={<Settings />} label="Settings" />
+          <Tab icon={<Inventory />} label="Inventory" />
         </Tabs>
+
+        <Divider sx={{ my: 2 }} />
 
         {/* Overview Tab */}
         <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
+          <Grid container spacing={4}>
             {/* Recent Orders */}
             <Grid item xs={12} md={8}>
-              <Card sx={{ borderRadius: 3 }}>
-                <CardContent>
+              <Card sx={{ borderRadius: 3, p: 2, mb: 3 }}>
+                <CardContent sx={{ p: 0 }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                       Recent Orders
@@ -353,12 +361,13 @@ const AdminPage: React.FC = () => {
                       variant="outlined"
                       size="small"
                       onClick={() => setTabValue(3)}
+                      sx={{ borderRadius: 2, fontWeight: 'bold' }}
                     >
                       View All
                     </Button>
                   </Box>
-                  <TableContainer>
-                    <Table>
+                  <TableContainer sx={{ maxHeight: 340 }}>
+                    <Table stickyHeader>
                       <TableHead>
                         <TableRow>
                           <TableCell>Order ID</TableCell>
@@ -370,7 +379,7 @@ const AdminPage: React.FC = () => {
                       </TableHead>
                       <TableBody>
                         {recentOrders.map((order) => (
-                          <TableRow key={order.id}>
+                          <TableRow key={order.id} hover>
                             <TableCell>#{order.id}</TableCell>
                             <TableCell>{order.customer}</TableCell>
                             <TableCell>${order.amount}</TableCell>
@@ -393,8 +402,8 @@ const AdminPage: React.FC = () => {
 
             {/* Quick Actions */}
             <Grid item xs={12} md={4}>
-              <Card sx={{ borderRadius: 3, mb: 3 }}>
-                <CardContent>
+              <Card sx={{ borderRadius: 3, p: 2, mb: 3 }}>
+                <CardContent sx={{ p: 0 }}>
                   <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 3 }}>
                     Quick Actions
                   </Typography>
@@ -776,6 +785,54 @@ const AdminPage: React.FC = () => {
           </Grid>
         </TabPanel>
 
+        {/* Inventory Tab */}
+        <TabPanel value={tabValue} index={7}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
+              Inventory Management
+            </Typography>
+          </Box>
+          <TableContainer component={Paper} sx={{ borderRadius: 3 }}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>ID</TableCell>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Category</TableCell>
+                  <TableCell>Stock</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {products.map((product) => (
+                  <TableRow key={product.id}>
+                    <TableCell>{product.id}</TableCell>
+                    <TableCell>{product.name}</TableCell>
+                    <TableCell>{product.category}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={product.stock}
+                        color={product.stock < 10 ? 'error' : 'default'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Add />}
+                        onClick={() => handleOpenDialog(`restock-${product.id}`)}
+                      >
+                        Restock
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </TabPanel>
+
         {/* Settings Tab */}
         <TabPanel value={tabValue} index={6}>
           <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 3 }}>
@@ -846,6 +903,7 @@ const AdminPage: React.FC = () => {
           {dialogType === 'product' && 'Add New Product'}
           {dialogType === 'user' && 'Add New User'}
           {dialogType === 'voucher' && 'Create Voucher'}
+          {dialogType.startsWith('restock-') && 'Restock Product'}
         </DialogTitle>
         <DialogContent>
           {dialogType === 'product' && (
@@ -864,6 +922,28 @@ const AdminPage: React.FC = () => {
               <TextField fullWidth label="Price" type="number" margin="normal" />
               <TextField fullWidth label="Stock" type="number" margin="normal" />
               <TextField fullWidth label="Description" multiline rows={3} margin="normal" />
+              {/* Upload multiple images */}
+              <Button
+                variant="outlined"
+                component="label"
+                sx={{ mt: 2, mb: 1 }}
+              >
+                Upload Images
+                <input
+                  type="file"
+                  hidden
+                  multiple
+                  accept="image/*"
+                  onChange={handleProductImagesChange}
+                />
+              </Button>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                {productImages.map((img, idx) => (
+                  <Box key={idx} sx={{ width: 64, height: 64, border: '1px solid #eee', borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
+                    <img src={img.preview} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </Box>
+                ))}
+              </Box>
             </Box>
           )}
           {dialogType === 'user' && (
@@ -886,6 +966,41 @@ const AdminPage: React.FC = () => {
               <TextField fullWidth label="Discount (%)" type="number" margin="normal" />
               <TextField fullWidth label="Valid Until" type="date" margin="normal" InputLabelProps={{ shrink: true }} />
               <TextField fullWidth label="Max Usage" type="number" margin="normal" />
+            </Box>
+          )}
+          {dialogType.startsWith('restock-') && (
+            <Box sx={{ pt: 2 }}>
+              <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                Enter quantity to restock for product #{dialogType.replace('restock-', '')}
+              </Typography>
+              <TextField fullWidth label="Quantity" type="number" margin="normal" />
+              {/* Hiển thị lịch sử nhập kho (mock) */}
+              <Box sx={{ mt: 3 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Restock History
+                </Typography>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Date</TableCell>
+                      <TableCell>Quantity</TableCell>
+                      <TableCell>Admin</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>2024-07-15</TableCell>
+                      <TableCell>20</TableCell>
+                      <TableCell>admin</TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell>2024-06-10</TableCell>
+                      <TableCell>15</TableCell>
+                      <TableCell>admin</TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </Box>
             </Box>
           )}
         </DialogContent>

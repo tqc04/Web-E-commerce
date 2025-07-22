@@ -92,26 +92,15 @@ const Footer: React.FC = () => {
   ]
 
   return (
-    <Box component="footer" sx={{ bgcolor: '#1a1a1a', color: 'white', mt: 'auto' }}>
+    <Box component="footer" sx={{ bgcolor: '#181818', color: 'white', mt: 'auto' }}>
       {/* Features Banner */}
-      <Box sx={{ bgcolor: '#2a2a2a', py: 3 }}>
+      <Box sx={{ bgcolor: '#232323', py: 2 }}>
         <Container maxWidth="lg">
-          <Grid container spacing={3}>
+          <Grid container spacing={2} justifyContent="center">
             {features.map((feature, index) => (
-              <Grid item xs={6} md={3} key={index}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Box sx={{ color: 'primary.main' }}>
-                    {feature.icon}
-                  </Box>
-                  <Box>
-                    <Typography variant="body2" fontWeight="bold">
-                      {feature.text}
-                    </Typography>
-                    <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                      {feature.subtext}
-                    </Typography>
-                  </Box>
-                </Box>
+              <Grid item xs={6} md={3} key={index} sx={{ textAlign: 'center' }}>
+                <Box sx={{ color: 'primary.main', mb: 1 }}>{feature.icon}</Box>
+                <Typography variant="body2" fontWeight="bold">{feature.text}</Typography>
               </Grid>
             ))}
           </Grid>
@@ -119,272 +108,73 @@ const Footer: React.FC = () => {
       </Box>
 
       {/* Main Footer */}
-      <Container maxWidth="lg" sx={{ py: 6 }}>
-        <Grid container spacing={4}>
-          {/* Company Info */}
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Grid container spacing={4} alignItems="flex-start" justifyContent="center">
+          {/* Company Info + Social */}
           <Grid item xs={12} md={4}>
-            <Typography variant="h5" gutterBottom fontWeight="bold" sx={{ color: 'primary.main' }}>
+            <Typography variant="h6" fontWeight="bold" sx={{ color: 'primary.main', mb: 1 }}>
               ShopPro
             </Typography>
-            <Typography variant="body2" sx={{ mb: 3, opacity: 0.8, lineHeight: 1.6 }}>
-              Your trusted e-commerce destination for the latest tech products. 
-              We provide quality products, exceptional service, and innovative AI-powered shopping experiences.
+            <Typography variant="body2" sx={{ mb: 2, opacity: 0.8 }}>
+              Your trusted e-commerce destination for the latest tech products.
             </Typography>
-            
-            {/* Contact Info */}
-            <Box sx={{ mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Email sx={{ mr: 1, fontSize: 16, color: 'primary.main' }} />
-                <Typography variant="body2">support@shoppro.com</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Phone sx={{ mr: 1, fontSize: 16, color: 'primary.main' }} />
-                <Typography variant="body2">+1 (555) 123-4567</Typography>
-              </Box>
-              <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                <LocationOn sx={{ mr: 1, fontSize: 16, color: 'primary.main' }} />
-                <Typography variant="body2">123 Tech Street, Digital City, DC 12345</Typography>
-              </Box>
-            </Box>
-
-            {/* Social Media */}
-            <Box>
-              <Typography variant="body2" gutterBottom fontWeight="bold">
-                Follow Us
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1 }}>
-                {socialLinks.map((social, index) => (
-                  <IconButton
-                    key={index}
-                    href={social.href}
-                    sx={{
-                      color: 'white',
-                      '&:hover': {
-                        color: social.color,
-                        transform: 'translateY(-2px)',
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    {social.icon}
-                  </IconButton>
-                ))}
-              </Box>
+            <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+              {socialLinks.map((social, idx) => (
+                <IconButton key={idx} href={social.href} sx={{ color: 'white', '&:hover': { color: social.color } }}>
+                  {social.icon}
+                </IconButton>
+              ))}
             </Box>
           </Grid>
 
           {/* Quick Links */}
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Quick Links
-            </Typography>
-            <Box>
-              {quickLinks.map((link, index) => (
-                <Link
-                  key={index}
-                  href={link.href}
-                  color="inherit"
-                  sx={{
-                    display: 'block',
-                    py: 0.5,
-                    opacity: 0.8,
-                    textDecoration: 'none',
-                    fontSize: '0.875rem',
-                    '&:hover': {
-                      opacity: 1,
-                      color: 'primary.main',
-                      textDecoration: 'underline',
-                    },
-                  }}
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </Box>
+          <Grid item xs={6} sm={4} md={2}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>Quick Links</Typography>
+            {quickLinks.map((link, idx) => (
+              <Link key={idx} href={link.href} color="inherit" underline="hover" sx={{ display: 'block', mb: 0.5, opacity: 0.8, '&:hover': { color: 'primary.main', opacity: 1 } }}>{link.label}</Link>
+            ))}
           </Grid>
 
           {/* Categories */}
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Categories
-            </Typography>
-            <Box>
-              {categories.map((category, index) => (
-                <Link
-                  key={index}
-                  href={category.href}
-                  color="inherit"
-                  sx={{
-                    display: 'block',
-                    py: 0.5,
-                    opacity: 0.8,
-                    textDecoration: 'none',
-                    fontSize: '0.875rem',
-                    '&:hover': {
-                      opacity: 1,
-                      color: 'primary.main',
-                      textDecoration: 'underline',
-                    },
-                  }}
-                >
-                  {category.label}
-                </Link>
-              ))}
-            </Box>
-          </Grid>
-
-          {/* Customer Service */}
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Customer Service
-            </Typography>
-            <Box>
-              {customerService.map((service, index) => (
-                <Link
-                  key={index}
-                  href={service.href}
-                  color="inherit"
-                  sx={{
-                    display: 'block',
-                    py: 0.5,
-                    opacity: 0.8,
-                    textDecoration: 'none',
-                    fontSize: '0.875rem',
-                    '&:hover': {
-                      opacity: 1,
-                      color: 'primary.main',
-                      textDecoration: 'underline',
-                    },
-                  }}
-                >
-                  {service.label}
-                </Link>
-              ))}
-            </Box>
+          <Grid item xs={6} sm={4} md={2}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>Categories</Typography>
+            {categories.map((cat, idx) => (
+              <Link key={idx} href={cat.href} color="inherit" underline="hover" sx={{ display: 'block', mb: 0.5, opacity: 0.8, '&:hover': { color: 'primary.main', opacity: 1 } }}>{cat.label}</Link>
+            ))}
           </Grid>
 
           {/* Newsletter */}
-          <Grid item xs={12} md={2}>
-            <Typography variant="h6" gutterBottom fontWeight="bold">
-              Stay Updated
-            </Typography>
-            <Typography variant="body2" sx={{ mb: 2, opacity: 0.8, fontSize: '0.875rem' }}>
-              Subscribe to get special offers, free giveaways, and exclusive deals.
-            </Typography>
-            
-            <Box component="form" onSubmit={handleNewsletterSubmit}>
+          <Grid item xs={12} md={4}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>Stay Updated</Typography>
+            <Box component="form" onSubmit={handleNewsletterSubmit} sx={{ display: 'flex', gap: 1, mb: 1 }}>
               <TextField
-                fullWidth
                 size="small"
                 placeholder="Your email address"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                type="email"
-                required
-                sx={{
-                  mb: 2,
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: 2,
-                    '& fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: 'rgba(255, 255, 255, 0.5)',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: 'primary.main',
-                    },
-                  },
-                  '& .MuiInputBase-input': {
-                    color: 'white',
-                    '&::placeholder': {
-                      color: 'rgba(255, 255, 255, 0.7)',
-                    },
-                  },
-                }}
+                onChange={e => setEmail(e.target.value)}
+                sx={{ bgcolor: 'white', borderRadius: 1, flex: 1 }}
+                InputProps={{ sx: { fontSize: 14 } }}
               />
-              <Button
-                type="submit"
-                fullWidth
-                variant="contained"
-                endIcon={<Send />}
-                sx={{
-                  borderRadius: 2,
-                  textTransform: 'none',
-                  fontWeight: 'bold',
-                }}
-              >
-                Subscribe
+              <Button type="submit" variant="contained" sx={{ borderRadius: 1, px: 2, minWidth: 0 }}>
+                <Send fontSize="small" />
               </Button>
             </Box>
-
-            <Typography variant="caption" sx={{ display: 'block', mt: 1, opacity: 0.6 }}>
-              By subscribing, you agree to our Privacy Policy and consent to receive updates from our company.
+            <Typography variant="caption" sx={{ opacity: 0.6 }}>
+              Get special offers, free giveaways, and exclusive deals.
             </Typography>
           </Grid>
         </Grid>
       </Container>
 
-      <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)' }} />
-
-      {/* Bottom Footer */}
-      <Box sx={{ bgcolor: '#0f0f0f', py: 3 }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={2} alignItems="center">
-            {/* Legal Links */}
-            <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: { xs: 2, md: 0 } }}>
-                {policies.map((policy, index) => (
-                  <Link
-                    key={index}
-                    href={policy.href}
-                    color="inherit"
-                    sx={{
-                      fontSize: '0.75rem',
-                      opacity: 0.7,
-                      textDecoration: 'none',
-                      '&:hover': {
-                        opacity: 1,
-                        textDecoration: 'underline',
-                      },
-                    }}
-                  >
-                    {policy.label}
-                  </Link>
-                ))}
-              </Box>
-            </Grid>
-
-            {/* Payment Methods & Trust Badges */}
-            <Grid item xs={12} md={6}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', md: 'flex-end' }, gap: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <PaymentOutlined sx={{ fontSize: 16, opacity: 0.7 }} />
-                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                    Secure Payments
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Nature sx={{ fontSize: 16, opacity: 0.7 }} />
-                  <Typography variant="caption" sx={{ opacity: 0.7 }}>
-                    Eco Friendly
-                  </Typography>
-                </Box>
-              </Box>
-            </Grid>
-          </Grid>
-
-          <Divider sx={{ borderColor: 'rgba(255, 255, 255, 0.1)', my: 2 }} />
-
-          {/* Copyright */}
-          <Box sx={{ textAlign: 'center' }}>
-            <Typography variant="body2" sx={{ opacity: 0.6 }}>
-              © {new Date().getFullYear()} ShopPro. All rights reserved. | Made with ❤️ for amazing shopping experiences
-            </Typography>
-            <Typography variant="caption" sx={{ opacity: 0.5, mt: 1, display: 'block' }}>
-              Powered by AI • Built for the future of e-commerce
-            </Typography>
+      {/* Bottom Bar */}
+      <Box sx={{ bgcolor: '#111', py: 2, mt: 2 }}>
+        <Container maxWidth="lg" sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
+          <Typography variant="caption" sx={{ opacity: 0.7 }}>
+            © 2025 ShopPro. All rights reserved. | Made with <span style={{ color: '#e25555' }}>♥</span> for shopping experiences
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <PaymentOutlined fontSize="small" sx={{ opacity: 0.7 }} />
+            <Nature fontSize="small" sx={{ opacity: 0.7 }} />
           </Box>
         </Container>
       </Box>

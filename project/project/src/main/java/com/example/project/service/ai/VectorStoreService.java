@@ -1,8 +1,5 @@
 package com.example.project.service.ai;
 
-import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -14,206 +11,102 @@ import java.util.Optional;
 @Service
 public class VectorStoreService {
     
-    @Autowired(required = false)
-    private VectorStore vectorStore;
-    
     @Autowired
     private AIService aiService;
     
     /**
-     * Store document with embedding
+     * Store document with embedding (placeholder implementation)
      */
     public void storeDocument(String id, String content, Map<String, Object> metadata) {
-        try {
-            metadata = new HashMap<>(metadata); // Make mutable copy
-            metadata.put("id", id); // Store ID in metadata
-            Document document = new Document(content, metadata);
-            
-            vectorStore.add(List.of(document));
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to store document: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would store to a real vector database
+        System.out.println("Vector store not available - document storage skipped: " + id);
     }
     
     /**
-     * Store multiple documents with embeddings
+     * Store multiple documents with embeddings (placeholder implementation)
      */
     public void storeDocuments(List<DocumentData> documents) {
-        if (vectorStore == null) {
-            System.out.println("Vector store is not available. Skipping document storage.");
-            return;
-        }
-        
-        try {
-            List<Document> docs = documents.stream()
-                    .map(doc -> {
-                        Map<String, Object> metadata = new HashMap<>(doc.getMetadata());
-                        metadata.put("id", doc.getId());
-                        return new Document(doc.getContent(), metadata);
-                    })
-                    .toList();
-            
-            vectorStore.add(docs);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to store documents: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would store to a real vector database
+        System.out.println("Vector store not available - document storage skipped for " + documents.size() + " documents");
     }
     
         /**
-     * Search similar documents by text query
+     * Search similar documents by text query (placeholder implementation)
      */
-    public List<Document> searchSimilar(String query, int limit) {
-        if (vectorStore == null) {
-            System.out.println("Vector store is not available. Returning empty results.");
+    public List<DocumentData> searchSimilar(String query, int limit) {
+        // Placeholder implementation - in production, this would search a real vector database
+        System.out.println("Vector store not available - returning empty search results for: " + query);
             return List.of();
         }
-        
-        try {
-            SearchRequest request = SearchRequest.query(query).withTopK(limit);
-            return vectorStore.similaritySearch(request);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to search similar documents: " + e.getMessage(), e);
-        }
-    }
 
     /**
-     * Search similar documents by text query with threshold
+     * Search similar documents by text query with threshold (placeholder implementation)
      */
-    public List<Document> searchSimilar(String query, int limit, double threshold) {
-        if (vectorStore == null) {
-            System.out.println("Vector store is not available. Returning empty results.");
+    public List<DocumentData> searchSimilar(String query, int limit, double threshold) {
+        // Placeholder implementation - in production, this would search a real vector database
+        System.out.println("Vector store not available - returning empty search results for: " + query);
             return List.of();
         }
-        
-        try {
-            SearchRequest request = SearchRequest.query(query).withTopK(limit).withSimilarityThreshold(threshold);
-            return vectorStore.similaritySearch(request);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to search similar documents with threshold: " + e.getMessage(), e);
-        }
-    }
     
     /**
-     * Delete document by ID
+     * Delete document by ID (placeholder implementation)
      */
     public void deleteDocument(String id) {
-        try {
-            vectorStore.delete(List.of(id));
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to delete document: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would delete from a real vector database
+        System.out.println("Vector store not available - document deletion skipped: " + id);
     }
     
     /**
-     * Delete multiple documents by IDs
+     * Delete multiple documents by IDs (placeholder implementation)
      */
     public void deleteDocuments(List<String> ids) {
-        try {
-            vectorStore.delete(ids);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to delete documents: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would delete from a real vector database
+        System.out.println("Vector store not available - document deletion skipped for " + ids.size() + " documents");
     }
     
     /**
-     * Update document content and metadata
+     * Update document content and metadata (placeholder implementation)
      */
     public void updateDocument(String id, String content, Map<String, Object> metadata) {
-        try {
-            // Delete old document
-            deleteDocument(id);
-            
-            // Add updated document
-            storeDocument(id, content, metadata);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to update document: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would update a real vector database
+        System.out.println("Vector store not available - document update skipped: " + id);
     }
     
     /**
-     * Store product embedding for recommendations
+     * Store product embedding for recommendations (placeholder implementation)
      */
     public void storeProductEmbedding(Long productId, String productName, String description, 
                                     String category, String brand, List<String> tags) {
-        try {
-            String content = String.format("%s %s %s %s %s", 
-                    productName, description, category, brand, String.join(" ", tags));
-            
-            Map<String, Object> metadata = Map.of(
-                    "type", "product",
-                    "productId", productId,
-                    "productName", productName,
-                    "category", category,
-                    "brand", brand,
-                    "tags", tags
-            );
-            
-            storeDocument("product_" + productId, content, metadata);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to store product embedding: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would store to a real vector database
+        System.out.println("Vector store not available - product embedding storage skipped: " + productId);
     }
     
     /**
-     * Store user behavior embedding
+     * Store user behavior embedding (placeholder implementation)
      */
     public void storeUserBehaviorEmbedding(Long userId, String behaviorType, 
                                          String productInfo, Map<String, Object> context) {
-        try {
-            String content = String.format("%s %s %s", 
-                    behaviorType, productInfo, context.toString());
-            
-            Map<String, Object> metadata = Map.of(
-                    "type", "user_behavior",
-                    "userId", userId,
-                    "behaviorType", behaviorType,
-                    "timestamp", System.currentTimeMillis()
-            );
-            metadata.putAll(context);
-            
-            String id = String.format("behavior_%d_%d", userId, System.currentTimeMillis());
-            storeDocument(id, content, metadata);
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to store user behavior embedding: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would store to a real vector database
+        System.out.println("Vector store not available - user behavior embedding storage skipped: " + userId);
     }
     
     /**
-     * Find similar products for recommendation
+     * Find similar products for recommendation (placeholder implementation)
      */
-    public List<Document> findSimilarProducts(String query, int limit) {
-        try {
-            List<Document> results = searchSimilar(query, limit * 2); // Get more results to filter
-            
-            return results.stream()
-                    .filter(doc -> "product".equals(doc.getMetadata().get("type")))
-                    .limit(limit)
-                    .toList();
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to find similar products: " + e.getMessage(), e);
-        }
+    public List<DocumentData> findSimilarProducts(String query, int limit) {
+        // Placeholder implementation - in production, this would search a real vector database
+        System.out.println("Vector store not available - returning empty similar products for: " + query);
+        return List.of();
     }
     
     /**
-     * Find products based on user preferences
+     * Find products based on user preferences (placeholder implementation)
      */
-    public List<Document> findProductsForUser(Long userId, List<String> preferences, 
+    public List<DocumentData> findProductsForUser(Long userId, List<String> preferences,
                                             String category, int limit) {
-        try {
-            String query = String.join(" ", preferences);
-            if (category != null && !category.isEmpty()) {
-                query += " " + category;
-            }
-            
-            List<Document> results = findSimilarProducts(query, limit * 2);
-            
-            // Filter out products user might have already interacted with
-            return results.stream()
-                    .limit(limit)
-                    .toList();
-        } catch (Exception e) {
-            throw new VectorStoreException("Failed to find products for user: " + e.getMessage(), e);
-        }
+        // Placeholder implementation - in production, this would search a real vector database
+        System.out.println("Vector store not available - returning empty products for user: " + userId);
+        return List.of();
     }
     
     /**

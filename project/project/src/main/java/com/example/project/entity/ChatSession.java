@@ -38,7 +38,7 @@ public class ChatSession {
     private String context;
     
     @Column(name = "ai_model")
-    private String aiModel = "gpt-4";
+    private String aiModel = "gemini-pro";
     
     @Column(name = "temperature")
     private Double temperature = 0.7;

@@ -23,6 +23,10 @@ public class InventoryItem {
     @JoinColumn(name = "product_id")
     private Product product;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+    
     @Column(name = "warehouse_location")
     private String warehouseLocation;
     
@@ -87,16 +91,16 @@ public class InventoryItem {
     
     // Status and alerts
     @Column(name = "is_low_stock")
-    private boolean isLowStock = false;
+    private Boolean isLowStock = false;
     
     @Column(name = "is_out_of_stock")
-    private boolean isOutOfStock = false;
+    private Boolean isOutOfStock = false;
     
     @Column(name = "is_overstocked")
-    private boolean isOverstocked = false;
+    private Boolean isOverstocked = false;
     
     @Column(name = "alert_sent")
-    private boolean alertSent = false;
+    private Boolean alertSent = false;
     
     @Column(name = "last_alert_date")
     private LocalDateTime lastAlertDate;
@@ -141,6 +145,9 @@ public class InventoryItem {
     public void setProduct(Product product) {
         this.product = product;
     }
+    
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
     
     public String getWarehouseLocation() {
         return warehouseLocation;
@@ -299,7 +306,7 @@ public class InventoryItem {
     }
     
     public boolean isLowStock() {
-        return isLowStock;
+        return isLowStock != null && isLowStock;
     }
     
     public void setLowStock(boolean lowStock) {
@@ -307,7 +314,7 @@ public class InventoryItem {
     }
     
     public boolean isOutOfStock() {
-        return isOutOfStock;
+        return isOutOfStock != null && isOutOfStock;
     }
     
     public void setOutOfStock(boolean outOfStock) {
@@ -315,7 +322,7 @@ public class InventoryItem {
     }
     
     public boolean isOverstocked() {
-        return isOverstocked;
+        return isOverstocked != null && isOverstocked;
     }
     
     public void setOverstocked(boolean overstocked) {
@@ -323,10 +330,10 @@ public class InventoryItem {
     }
     
     public boolean isAlertSent() {
-        return alertSent;
+        return alertSent != null && alertSent;
     }
     
-    public void setAlertSent(boolean alertSent) {
+    public void setAlertSent(Boolean alertSent) {
         this.alertSent = alertSent;
     }
     
@@ -421,5 +428,14 @@ public class InventoryItem {
         this.demandForecast30Days = forecast30Days;
         this.demandForecast90Days = forecast90Days;
         this.lastForecastUpdate = LocalDateTime.now();
+    }
+
+    @PrePersist
+    @PreUpdate
+    public void ensureAlertSentNotNull() {
+        if (alertSent == null) alertSent = false;
+        if (isLowStock == null) isLowStock = false;
+        if (isOutOfStock == null) isOutOfStock = false;
+        if (isOverstocked == null) isOverstocked = false;
     }
 } 
