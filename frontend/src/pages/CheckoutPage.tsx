@@ -47,6 +47,7 @@ import { useCart } from '../contexts/CartContext'
 import { useAuth } from '../contexts/AuthContext'
 import { apiService } from '../services/api'
 import notificationService from '../services/notificationService'
+import axios from 'axios';
 
 const steps = ['Review Cart', 'Shipping Address', 'Payment Method', 'Confirmation']
 
@@ -57,13 +58,6 @@ interface Province {
 }
 
 // Sửa interface Commune cho đúng dữ liệu GHN
-interface Commune {
-  wardCode: string;
-  wardName: string;
-  districtID: number;
-}
-
-// Interface Commune chỉ cần id và name
 interface Commune {
   id: string;
   name: string;
@@ -78,52 +72,80 @@ const CheckoutPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   
   // Shipping data
-  const [provinces, setProvinces] = useState<Province[]>([])
-  const [communes, setCommunes] = useState<Commune[]>([])
-  // Sửa state shippingFee mặc định là null
-  const [shippingFee, setShippingFee] = useState<number | null>(null);
-  
-  // Search states
-  const [provinceSearchTerm, setProvinceSearchTerm] = useState('')
-  const [communeSearchTerm, setCommuneSearchTerm] = useState('')
-  const [filteredProvinces, setFilteredProvinces] = useState<Province[]>([])
-  const [filteredCommunes, setFilteredCommunes] = useState<Commune[]>([])
+  const [provinces, setProvinces] = useState<any[]>([]);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [wards, setWards] = useState<any[]>([]);
+  const [selectedProvince, setSelectedProvince] = useState<any | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<any | null>(null);
+  const [selectedWard, setSelectedWard] = useState<any | null>(null);
   
   // Form states
   // Sửa state shippingAddress để lưu districtId và wardCode
-  const [shippingAddress, setShippingAddress] = useState({
+  const [shippingAddress, setShippingAddress] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    address: string;
+    provinceId: string | null;
+    communeCode: string | null;
+    districtId: number | null;
+    provinceName: string;
+    communeName: string;
+    districtName: string;
+    note: string;
+  }>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     address: '',
-    provinceId: null as string | null,
-    communeCode: null as string | null, // ward_code
+    provinceId: null,
+    communeCode: null,
+    districtId: null,
     provinceName: '',
     communeName: '',
+    districtName: '',
     note: ''
-  })
+  });
   
-  const [billingAddress, setBillingAddress] = useState({
+  const [billingAddress, setBillingAddress] = useState<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    address: string;
+    provinceId: string | null;
+    communeCode: string | null;
+    districtId: number | null;
+    provinceName: string;
+    communeName: string;
+    districtName: string;
+  }>({
     firstName: '',
     lastName: '',
     email: '',
     phone: '',
     address: '',
-    provinceId: null as string | null,
-    communeCode: null as string | null,
+    provinceId: null,
+    communeCode: null,
+    districtId: null,
     provinceName: '',
-    communeName: ''
-  })
+    communeName: '',
+    districtName: ''
+  });
   
   const [paymentMethod, setPaymentMethod] = useState('credit_card')
   const [sameAsBilling, setSameAsBilling] = useState(true)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
+  const [shippingFee, setShippingFee] = useState<number | null>(null);
 
   // Load provinces on component mount
   useEffect(() => {
-    loadProvinces()
-  }, [])
+    axios.get('/api/shipping/ghn/provinces')
+      .then(res => setProvinces(res.data.data))
+      .catch(() => setProvinces([]));
+  }, []);
 
   // Redirect if cart is empty
   useEffect(() => {
@@ -159,98 +181,66 @@ const CheckoutPage: React.FC = () => {
     }
   }, [user])
 
-  const loadProvinces = async () => {
-    try {
-      const response = await fetch('http://localhost:8081/api/shipping/provinces')
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Loaded provinces:', data)
-        setProvinces(data)
-        setFilteredProvinces(data)
-      } else {
-        console.error('Failed to load provinces:', response.status)
-      }
-    } catch (error) {
-      console.error('Error loading provinces:', error)
-    }
-  }
+  // Sửa lại các hàm lấy tỉnh, huyện, xã/phường để gọi API GHN qua backend proxy
+  // Ví dụ: /api/shipping/ghn/provinces, /api/shipping/ghn/districts?province_id=, /api/shipping/ghn/wards?district_id=
 
-  const searchProvinces = async (searchTerm: string) => {
-    try {
-      const response = await fetch(`http://localhost:8081/api/shipping/provinces/search?q=${encodeURIComponent(searchTerm)}`)
-      if (response.ok) {
-        const data = await response.json()
-        setFilteredProvinces(data)
-      } else {
-        // Fallback to client-side filtering
-        const filtered = provinces.filter(province => 
-          province.provinceName.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        setFilteredProvinces(filtered)
-      }
-    } catch (error) {
-      console.error('Error searching provinces:', error)
-      // Fallback to client-side filtering
-      const filtered = provinces.filter(province => 
-        province.provinceName.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setFilteredProvinces(filtered)
-    }
-  }
+  // Load provinces on component mount
+  useEffect(() => {
+    axios.get('/api/shipping/ghn/provinces')
+      .then(res => setProvinces(res.data.data))
+      .catch(() => setProvinces([]));
+  }, []);
 
-  // Sửa loadCommunes để set đúng state
-  const loadCommunes = async (provinceCode: string) => {
-    try {
-      const response = await fetch(`http://localhost:8081/api/shipping/provinces/${provinceCode}/communes`)
-      if (response.ok) {
-        const data = await response.json()
-        // Map dữ liệu trả về đúng key
-        const mapped = data.map((c: any) => ({
-          wardCode: c.wardCode,
-          wardName: c.wardName,
-          districtID: c.districtID
-        }))
-        setCommunes(mapped)
-        setFilteredCommunes(mapped)
-      } else {
-        setCommunes([])
-        setFilteredCommunes([])
-      }
-    } catch (error) {
-      setCommunes([])
-      setFilteredCommunes([])
+  const handleProvinceChange = (province: any) => {
+    setSelectedProvince(province);
+    setSelectedDistrict(null);
+    setSelectedWard(null);
+    setDistricts([]);
+    setWards([]);
+    setShippingAddress(prev => ({
+      ...prev,
+      provinceId: province?.ProvinceID || null,
+      provinceName: province?.ProvinceName || '',
+      districtId: null,
+      districtName: '',
+      communeCode: null,
+      communeName: ''
+    }));
+    if (province) {
+      axios.get(`/api/shipping/ghn/districts?province_id=${province.ProvinceID}`)
+        .then(res => setDistricts(res.data.data))
+        .catch(() => setDistricts([]));
     }
-  }
+  };
 
-  const searchCommunes = async (searchTerm: string) => {
-    if (!shippingAddress.provinceId || shippingAddress.provinceId === '') return
-    
-    const province = provinces.find(p => p.provinceID.toString() === shippingAddress.provinceId)
-    if (!province) return
-    
-    try {
-      const response = await fetch(`http://localhost:8081/api/shipping/provinces/${province.code}/communes/search?q=${encodeURIComponent(searchTerm)}`)
-      if (response.ok) {
-        const data = await response.json()
-        setFilteredCommunes(data)
-      } else {
-        // Fallback to client-side filtering
-        const filtered = communes.filter(commune => 
-          commune.name.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-        setFilteredCommunes(filtered)
-      }
-    } catch (error) {
-      console.error('Error searching communes:', error)
-      // Fallback to client-side filtering
-      const filtered = communes.filter(commune => 
-        commune.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-      setFilteredCommunes(filtered)
+  const handleDistrictChange = (district: any) => {
+    setSelectedDistrict(district);
+    setSelectedWard(null);
+    setWards([]);
+    setShippingAddress(prev => ({
+      ...prev,
+      districtId: district?.DistrictID || null,
+      districtName: district?.DistrictName || '',
+      communeCode: null,
+      communeName: ''
+    }));
+    if (district) {
+      axios.get(`/api/shipping/ghn/wards?district_id=${district.DistrictID}`)
+        .then(res => setWards(res.data.data))
+        .catch(() => setWards([]));
     }
-  }
+  };
 
-  // Sửa fetchWarehouseForFirstProduct trả về provinceId, communeCode
+  const handleWardChange = (ward: any) => {
+    setSelectedWard(ward);
+    setShippingAddress(prev => ({
+      ...prev,
+      communeCode: ward?.WardCode || null,
+      communeName: ward?.WardName || ''
+    }));
+  };
+
+  // Sửa fetchWarehouseForFirstProduct trả về đầy đủ các mã (ép kiểu string)
   const fetchWarehouseForFirstProduct = async (productId: number) => {
     try {
       const res = await fetch(`http://localhost:8081/api/inventory/product/${productId}`);
@@ -258,46 +248,68 @@ const CheckoutPage: React.FC = () => {
         const data = await res.json();
         if (data && data.warehouse) {
           return {
-            provinceId: data.warehouse.province,
-            communeCode: data.warehouse.commune
+            provinceCode: data.warehouse.provinceCode ? String(data.warehouse.provinceCode) : (data.warehouse.province ? String(data.warehouse.province) : ''),
+            districtCode: data.warehouse.districtCode ? String(data.warehouse.districtCode) : (data.warehouse.districtId ? String(data.warehouse.districtId) : ''),
+            wardCode: data.warehouse.wardCode ? String(data.warehouse.wardCode) : '',
           };
         }
       }
     } catch (e) {}
-    // fallback HCM
-    return { provinceId: '79', communeCode: '20109' };
+    // fallback HCM Q1
+    return { provinceCode: '79', districtCode: '1454', wardCode: '20109' };
   };
 
-  // Sửa calculateShippingFee để chỉ gửi đúng các trường GHN yêu cầu: from_district_id, service_id, to_district_id, to_ward_code, height, length, weight, width. Không gửi các trường khác. Lấy service_id mặc định (ví dụ 53321). Khi chọn xã/phường, chỉ cần lấy ward_code và district_id.
+  // Sửa calculateShippingFee để lấy districtCode từ selectedWard.parent_code nếu có
   const calculateShippingFee = async () => {
-    if (!shippingAddress.provinceId || !shippingAddress.communeCode || !cart || !cart.items.length) {
+    // Lấy mã từ selectedProvince, selectedDistrict, selectedWard (GHN)
+    const toProvinceId = selectedProvince?.ProvinceID;
+    const toDistrictId = selectedDistrict?.DistrictID;
+    const toWardCode = selectedWard?.WardCode;
+    if (!toProvinceId || !toDistrictId || !toWardCode || !cart || !cart.items.length) {
       setShippingFee(null);
+      notificationService.error('Vui lòng chọn đầy đủ Tỉnh, Huyện, Xã để tính phí vận chuyển!');
       return;
     }
-    // Lấy warehouse cho sản phẩm đầu tiên
+    // Lấy thông tin kho gửi cho sản phẩm đầu tiên (địa chỉ kho gửi phải lấy từ DB, không lấy từ địa chỉ nhận)
     const firstProductId = cart.items[0].productId;
     const warehouse = await fetchWarehouseForFirstProduct(firstProductId);
+    const fromProvinceId = warehouse.provinceCode;
+    const fromDistrictId = warehouse.districtCode;
+    const fromWardCode = warehouse.wardCode;
     try {
       const requestBody = {
-        fromProvince: warehouse.provinceId,
-        fromCommune: warehouse.communeCode,
-        toProvince: shippingAddress.provinceId,
-        toCommune: shippingAddress.communeCode,
+        fromProvinceId,
+        fromDistrictId,
+        fromWardCode,
+        toProvinceId,
+        toDistrictId,
+        toWardCode,
         weight: 1000
       };
-      const response = await fetch('http://localhost:8081/api/shipping/calculate-fee', {
+      console.log('Shipping fee payload:', requestBody);
+      const response = await fetch('http://localhost:8081/api/shipping/calculate-fee-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
       });
       if (response.ok) {
         const data = await response.json();
-        setShippingFee(data.shippingFee);
+        console.log('Shipping fee response:', data);
+        if (data.fee !== undefined) {
+          setShippingFee(data.fee);
+        } else if (data.shippingFee !== undefined) {
+          setShippingFee(data.shippingFee);
+        } else {
+          setShippingFee(null);
+          notificationService.error('Không lấy được phí vận chuyển từ server!');
+        }
       } else {
         setShippingFee(null);
+        notificationService.error('Không lấy được phí vận chuyển từ server!');
       }
     } catch (error) {
       setShippingFee(null);
+      notificationService.error('Lỗi khi tính phí vận chuyển!');
     }
   };
 
@@ -309,35 +321,17 @@ const CheckoutPage: React.FC = () => {
   }
 
   // Khi chọn tỉnh/thành phố, load xã/phường theo provinceCode
-  const handleProvinceChange = (provinceId: string) => {
-    const province = provinces.find(p => p.provinceID.toString() === provinceId)
-    setShippingAddress(prev => ({
-      ...prev,
-      provinceId,
-      provinceName: province?.provinceName || '',
-      communeCode: '',
-      communeName: '',
-      districtId: null
-    }))
-    setCommunes([])
-    setFilteredCommunes([])
-    setShippingFee(null)
-    if (provinceId && province) {
-      loadCommunes(province.code)
-    }
-  }
 
-  // Sửa handleCommuneChange để lưu wardCode, wardName, districtID
-  const handleCommuneChange = (wardCode: string) => {
-    const commune = communes.find(c => c.wardCode === wardCode)
-    setShippingAddress(prev => ({
-      ...prev,
-      communeCode: wardCode,
-      communeName: commune?.wardName || '',
-      districtId: commune?.districtID || null
-    }))
-    setTimeout(() => calculateShippingFee(), 100)
-  }
+
+  // Tự động cập nhật phí shipping khi thay đổi địa chỉ giao hàng
+  useEffect(() => {
+    if (selectedProvince && selectedDistrict && selectedWard) {
+      calculateShippingFee();
+    } else {
+      setShippingFee(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedProvince, selectedDistrict, selectedWard]);
 
   // Khi bấm Next ở bước Shipping Address, nếu shippingFee chưa xác định thì gọi lại calculateShippingFee trước khi sang bước tiếp theo
   const handleNext = async () => {
@@ -362,10 +356,10 @@ const CheckoutPage: React.FC = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1)
   }
 
-  // Sửa handlePlaceOrder để chỉ gửi địa chỉ thực sự vào shippingAddress và billingAddress
+  // Sửa handlePlaceOrder để gửi shipping_address và billing_address là chuỗi địa chỉ đầy đủ
   const handlePlaceOrder = async () => {
     console.log('handlePlaceOrder - user:', user, 'cart:', cart)
-    
+
     if (!cart || !user) {
       notificationService.error('Unable to place order - missing user or cart data')
       return
@@ -373,7 +367,23 @@ const CheckoutPage: React.FC = () => {
 
     try {
       setLoading(true)
-      
+
+      // Gộp địa chỉ đầy đủ
+      const fullShippingAddress = [
+        shippingAddress.address,
+        shippingAddress.communeName,
+        shippingAddress.districtName,
+        shippingAddress.provinceName
+      ].filter(Boolean).join(', ');
+      const fullBillingAddress = sameAsBilling
+        ? fullShippingAddress
+        : [
+            billingAddress.address,
+            billingAddress.communeName,
+            billingAddress.districtName,
+            billingAddress.provinceName
+          ].filter(Boolean).join(', ');
+
       // Prepare order data
       const orderData = {
         userId: user.id,
@@ -381,21 +391,19 @@ const CheckoutPage: React.FC = () => {
           productId: item.productId,
           quantity: item.quantity
         })),
-        shippingAddress: `${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`,
-        billingAddress: sameAsBilling 
-          ? `${shippingAddress.address}\n${shippingAddress.communeName}, ${shippingAddress.provinceName}`
-          : `${billingAddress.address}\n${billingAddress.communeName}, ${billingAddress.provinceName}`,
+        shippingAddress: fullShippingAddress,
+        billingAddress: fullBillingAddress,
         paymentMethod: paymentMethod,
         shippingFee: shippingFee,
-        note: shippingAddress.note // gửi note vào backend
+        note: shippingAddress.note
       }
-      
+
       console.log('Order data being sent:', orderData)
 
-      const response = await apiService.createOrder(orderData)
-      
-      if (response.success) {
-        setOrderNumber(response.data.orderNumber)
+      const orderResponse = await apiService.createOrder(orderData)
+
+      if (orderResponse.success) {
+        setOrderNumber(orderResponse.data.orderNumber)
         setActiveStep(steps.length)
         await clearCart()
         notificationService.success('Order placed successfully!')
@@ -528,88 +536,33 @@ const CheckoutPage: React.FC = () => {
                   required
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <Autocomplete
-                  options={filteredProvinces}
-                  getOptionLabel={(option) => option.provinceName}
-                  value={provinces.find(p => p.provinceID.toString() === (shippingAddress.provinceId || '')) || null}
-                  onChange={(event, newValue) => {
-                    if (newValue) {
-                      handleProvinceChange(newValue.provinceID.toString())
-                    }
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setProvinceSearchTerm(newInputValue)
-                    searchProvinces(newInputValue)
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Tỉnh/Thành phố *"
-                      required
-                      placeholder="Tìm kiếm tỉnh/thành..."
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <Box component="li" {...props}>
-                      <Typography variant="body2">
-                        {option.provinceName}
-                      </Typography>
-                    </Box>
-                  )}
-                  filterOptions={(x) => x} // Disable built-in filtering
-                  noOptionsText="Không tìm thấy tỉnh/thành"
-                  loading={provinces.length === 0}
+                  options={provinces}
+                  getOptionLabel={option => option.ProvinceName || ''}
+                  value={selectedProvince}
+                  onChange={(e, value) => handleProvinceChange(value)}
+                  renderInput={params => <TextField {...params} label="Tỉnh/Thành phố *" required />}
                 />
               </Grid>
-              <Grid item xs={12} sm={6}>
+              <Grid item xs={12} sm={4}>
                 <Autocomplete
-                  options={filteredCommunes}
-                  getOptionLabel={(option) => option.wardName}
-                  value={filteredCommunes.find(c => c.wardCode === (shippingAddress.communeCode || '')) || null}
-                  onChange={(event, newValue) => {
-                    if (newValue) {
-                      handleCommuneChange(newValue.wardCode)
-                    } else {
-                      // User clear selection: reset về danh sách gốc
-                      setShippingAddress(prev => ({
-                        ...prev,
-                        communeCode: '',
-                        communeName: '',
-                        districtId: null
-                      }));
-                      setShippingFee(null);
-                      setCommunes([]) // reset lại danh sách xã/phường gốc
-                    }
-                  }}
-                  onInputChange={(event, newInputValue) => {
-                    setCommuneSearchTerm(newInputValue)
-                    if (newInputValue === '') {
-                      setFilteredCommunes(communes); // Nếu xóa input, trả lại danh sách gốc
-                    } else {
-                      searchCommunes(newInputValue)
-                    }
-                  }}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      label="Phường/Xã *"
-                      required
-                      placeholder="Tìm kiếm phường/xã..."
-                      disabled={!shippingAddress.provinceId || shippingAddress.provinceId === ''}
-                    />
-                  )}
-                  renderOption={(props, option) => (
-                    <Box component="li" {...props}>
-                      <Typography variant="body2">
-                        {option.wardName}
-                      </Typography>
-                    </Box>
-                  )}
-                  filterOptions={(x) => x} // Disable built-in filtering
-                  noOptionsText="Không tìm thấy phường/xã"
-                  loading={communes.length === 0}
-                  disabled={!shippingAddress.provinceId || shippingAddress.provinceId === ''}
+                  options={districts}
+                  getOptionLabel={option => option.DistrictName || ''}
+                  value={selectedDistrict}
+                  onChange={(e, value) => handleDistrictChange(value)}
+                  renderInput={params => <TextField {...params} label="Quận/Huyện *" required />}
+                  disabled={!selectedProvince}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Autocomplete
+                  options={wards}
+                  getOptionLabel={option => option.WardName || ''}
+                  value={selectedWard}
+                  onChange={(e, value) => handleWardChange(value)}
+                  renderInput={params => <TextField {...params} label="Xã/Phường *" required />}
+                  disabled={!selectedDistrict}
                 />
               </Grid>
               <Grid item xs={12}>
@@ -669,19 +622,6 @@ const CheckoutPage: React.FC = () => {
                 {formatPrice(cart.totalAmount + (shippingFee || 0))}
               </Typography>
             </Box>
-            {shippingFee !== null ? (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="body2">
-                  Shipping fee: {formatPrice(shippingFee)}
-                </Typography>
-              </Alert>
-            ) : (
-              <Alert severity="info" sx={{ mt: 2 }}>
-                <Typography variant="body2">
-                  Shipping fee: Chưa xác định
-                </Typography>
-              </Alert>
-            )}
           </Box>
         )
 

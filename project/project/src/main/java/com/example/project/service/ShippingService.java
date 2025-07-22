@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -16,6 +17,13 @@ import java.util.Map;
 import com.example.project.entity.Warehouse;
 import com.example.project.repository.WarehouseRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.util.concurrent.ConcurrentHashMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import jakarta.annotation.PostConstruct;
+import java.io.InputStream;
+import java.io.IOException;
+
 
 @Service
 public class ShippingService {
@@ -48,6 +56,78 @@ public class ShippingService {
 
     @Value("${ghn.api.mock-create-order:false}")
     private boolean mockCreateOrder;
+
+    private final Map<String, Integer> wardDistrictCache = new ConcurrentHashMap<>();
+
+
+
+    private Integer getDistrictIdByWardCode(String wardCode) {
+        if (wardDistrictCache.containsKey(wardCode)) {
+            return wardDistrictCache.get(wardCode);
+        }
+        String ghnWardUrl = ghnBaseUrl.replace("/v2", "") + "/master-data/ward?ward_code=" + wardCode;
+        HttpHeaders headers = createHeaders();
+        HttpEntity<Void> request = new HttpEntity<>(headers);
+        ResponseEntity<Map> response = restTemplate.exchange(ghnWardUrl, HttpMethod.GET, request, Map.class);
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+            if (data != null && data.get("DistrictID") != null) {
+                Integer districtId = ((Number) data.get("DistrictID")).intValue();
+                wardDistrictCache.put(wardCode, districtId);
+                return districtId;
+            }
+        }
+        throw new RuntimeException("Không tìm thấy district_id cho ward_code: " + wardCode);
+    }
+
+    public static class ShippingResult {
+        public double fee;
+        public long leadtime;
+        public ShippingResult(double fee, long leadtime) {
+            this.fee = fee;
+            this.leadtime = leadtime;
+        }
+    }
+
+    public ShippingResult calculateGhnShippingFee(
+        Integer fromDistrictId, String fromWardCode,
+        Integer toDistrictId, String toWardCode,
+        double weight
+    ) {
+        try {
+            // Log chi tiết payload gửi sang GHN
+            System.out.println("GHN payload: fromDistrictId=" + fromDistrictId + ", fromWardCode=" + fromWardCode +
+                ", toDistrictId=" + toDistrictId + ", toWardCode=" + toWardCode + ", weight=" + weight);
+            HttpHeaders headers = createHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            Map<String, Object> body = new java.util.HashMap<>();
+            body.put("from_district_id", fromDistrictId);
+            body.put("from_ward_code", fromWardCode);
+            body.put("to_district_id", toDistrictId);
+            body.put("to_ward_code", toWardCode);
+            body.put("weight", (int) Math.round(weight));
+            body.put("service_type_id", 2); // Standard delivery
+            body.put("insurance_value", 0);
+            body.put("height", 10);
+            body.put("length", 20);
+            body.put("width", 15);
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
+            String url = ghnBaseUrl + "/shipping-order/fee";
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, request, Map.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
+                if (data != null && data.get("total") != null) {
+                    double fee = ((Number) data.get("total")).doubleValue();
+                    long leadtime = data.get("leadtime") != null ? ((Number) data.get("leadtime")).longValue() : 0L;
+                    return new ShippingResult(fee, leadtime);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error calculating shipping fee: " + e.getMessage());
+        }
+        // Return default shipping fee if API fails
+        return new ShippingResult(-1, 0);
+    }
 
     // Vietnam Government Address API DTOs
     public static class Province {
@@ -416,11 +496,7 @@ public class ShippingService {
                     Map<String, Object> map = new java.util.HashMap<>();
                     map.put("wardCode", c.get("code"));
                     map.put("wardName", c.get("name"));
-                    if (c.containsKey("district_id")) {
-                        map.put("districtID", c.get("district_id"));
-                    } else {
-                        map.put("districtID", null);
-                    }
+                    // Không có districtID, để null hoặc bỏ qua
                     result.add(map);
                 }
                 return result;
@@ -631,7 +707,7 @@ public class ShippingService {
         }
 
         // Return default shipping fee if API fails
-        return BigDecimal.valueOf(30000); // 30,000 VND default
+        return BigDecimal.valueOf(-1); // -1: không có phí mặc định
     }
 
     /**
@@ -679,6 +755,6 @@ public class ShippingService {
      * Get default shipping fee for testing
      */
     public BigDecimal getDefaultShippingFee() {
-        return BigDecimal.valueOf(30000); // 30,000 VND
+        return BigDecimal.valueOf(-1); // -1: không có phí mặc định
     }
 } 

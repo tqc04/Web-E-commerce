@@ -76,10 +76,11 @@ public class OrderService {
         Order order = new Order();
         order.setUser(user);
         order.setOrderNumber(generateOrderNumber());
-        order.setShippingAddress(shippingAddress);
-        order.setBillingAddress(billingAddress);
+        order.setShippingAddress(shippingAddress); // JSON string
+        order.setBillingAddress(billingAddress);   // JSON string
         order.setPaymentMethod(paymentMethod);
         order.setStatus(OrderStatus.PENDING); // Start with PENDING
+        order.setNotes(note); // Gán note vào trường notes
         
         // Set timestamps
         LocalDateTime now = LocalDateTime.now();

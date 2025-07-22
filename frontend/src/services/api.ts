@@ -651,6 +651,17 @@ class ApiService {
     const response = await apiClient.get('/categories/with-count');
     return response.data;
   }
+
+  // Lấy danh sách huyện theo tỉnh
+  async getDistrictsByProvince(provinceCode: string): Promise<any[]> {
+    const response = await apiClient.get(`/shipping/districts/getByProvince?provinceCode=${provinceCode}`)
+    return response.data
+  }
+  // Lấy danh sách xã/phường theo huyện
+  async getWardsByDistrict(districtCode: string): Promise<any[]> {
+    const response = await apiClient.get(`/shipping/wards/getByDistrict?districtCode=${districtCode}`)
+    return response.data
+  }
 }
 
 // Export singleton instance

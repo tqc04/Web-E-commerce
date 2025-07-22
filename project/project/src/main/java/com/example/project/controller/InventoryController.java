@@ -24,20 +24,24 @@ public class InventoryController {
         if (warehouse == null) {
             return ResponseEntity.status(404).body(Map.of("error", "No warehouse found for inventory of product " + productId));
         }
-        Map<String, Object> result = Map.of(
-            "inventory", Map.of(
-                "id", inventory.getId(),
-                "quantityAvailable", inventory.getQuantityAvailable(),
-                "quantityOnHand", inventory.getQuantityOnHand(),
-                "warehouseId", warehouse.getId()
-            ),
-            "warehouse", Map.of(
-                "id", warehouse.getId(),
-                "address", warehouse.getAddress(),
-                "province", warehouse.getProvince(),
-                "commune", warehouse.getCommune()
-            )
-        );
+        Map<String, Object> inventoryMap = new java.util.HashMap<>();
+        inventoryMap.put("id", inventory.getId());
+        inventoryMap.put("quantityAvailable", inventory.getQuantityAvailable());
+        inventoryMap.put("quantityOnHand", inventory.getQuantityOnHand());
+        inventoryMap.put("warehouseId", warehouse.getId());
+
+        Map<String, Object> warehouseMap = new java.util.HashMap<>();
+        warehouseMap.put("id", warehouse.getId());
+        warehouseMap.put("address", warehouse.getAddress());
+        warehouseMap.put("province", warehouse.getProvince());
+        warehouseMap.put("commune", warehouse.getCommune());
+        warehouseMap.put("districtId", warehouse.getDistrictId());
+        warehouseMap.put("wardCode", warehouse.getWardCode());
+        warehouseMap.put("provinceCode", warehouse.getProvince()); // fallback nếu có
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("inventory", inventoryMap);
+        result.put("warehouse", warehouseMap);
         return ResponseEntity.ok(result);
     }
 } 
