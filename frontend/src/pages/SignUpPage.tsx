@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { apiService } from '../services/api'
+import { useNotification } from '../contexts/NotificationContext';
 
 interface SignUpFormData {
   username: string
@@ -53,6 +54,7 @@ const SignUpPage: React.FC = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const { notify } = useNotification();
 
   const validateForm = (): boolean => {
     const newErrors: Partial<SignUpFormData> = {}
@@ -131,21 +133,24 @@ const SignUpPage: React.FC = () => {
     setMessage(null)
 
     try {
-      const response = await apiService.register({
+      // Chỉ gửi các trường cần thiết, không gửi undefined/null
+      const payload: any = {
         username: formData.username,
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
-        lastName: formData.lastName,
-        phoneNumber: formData.phoneNumber || undefined
-      })
+        lastName: formData.lastName
+      };
+      if (formData.phoneNumber) payload.phoneNumber = formData.phoneNumber;
+
+      const response = await apiService.register(payload)
 
       if (response.success) {
         setMessage({
           type: 'success',
           text: 'Registration successful! Please check your email for verification.'
         })
-        
+        notify('Registration successful! Please check your email for verification.', 'success');
         // Redirect to login after 3 seconds
         setTimeout(() => {
           navigate('/login')
@@ -155,12 +160,15 @@ const SignUpPage: React.FC = () => {
           type: 'error',
           text: response.message || 'Registration failed'
         })
+        notify(response.message || 'Registration failed', 'error');
       }
     } catch (error: any) {
+      // Hiển thị lỗi rõ ràng nếu có message từ backend
       setMessage({
         type: 'error',
-        text: error.response?.data?.message || 'Registration failed. Please try again.'
+        text: error.response?.data?.message || error.response?.data?.error || 'Registration failed. Please try again.'
       })
+      notify(error.response?.data?.message || error.response?.data?.error || 'Registration failed. Please try again.', 'error');
     } finally {
       setIsLoading(false)
     }
@@ -341,7 +349,7 @@ const SignUpPage: React.FC = () => {
             }
             sx={{ mb: 2 }}
           />
-          {errors.agreeToTerms && (
+          {typeof errors.agreeToTerms === 'string' && (
             <Typography variant="caption" color="error" display="block" sx={{ mt: -1, mb: 2 }}>
               {errors.agreeToTerms}
             </Typography>

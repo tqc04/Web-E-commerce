@@ -44,6 +44,12 @@ public class AuthController {
             
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
+                if (!Boolean.TRUE.equals(user.getIsEmailVerified())) {
+                    Map<String, Object> response = new HashMap<>();
+                    response.put("success", false);
+                    response.put("message", "Email not verified. Please check your email to verify your account.");
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                }
                 System.out.println("User details: " + user.getUsername() + ", " + user.getEmail());
                 
                 // Update last login
@@ -93,6 +99,8 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<Map<String, Object>> register(@RequestBody UserCreateRequest userRequest) {
         try {
+            // Always set role to USER
+            userRequest.setRole(com.example.project.entity.UserRole.USER);
             // Check if user already exists
             if (userService.existsByUsername(userRequest.getUsername())) {
                 Map<String, Object> response = new HashMap<>();

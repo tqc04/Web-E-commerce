@@ -4,30 +4,35 @@ import com.example.project.entity.User;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 
 @Service
 public class EmailService {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
 
+    @Autowired
+    private JavaMailSender mailSender;
+
     /**
      * Send email verification
-     * TODO: Implement actual email sending with SMTP/Email service provider
      */
     public void sendEmailVerification(User user) {
         try {
-            // For now, just log the verification email
-            logger.info("Sending email verification to: {} with token: {}", 
-                       user.getEmail(), user.getEmailVerificationToken());
-            
-            // TODO: Implement actual email sending
-            // Example with JavaMailSender:
-            // SimpleMailMessage message = new SimpleMailMessage();
-            // message.setTo(user.getEmail());
-            // message.setSubject("Email Verification");
-            // message.setText("Please verify your email: " + verificationUrl);
-            // mailSender.send(message);
-            
+            String to = user.getEmail();
+            String subject = "Email Verification";
+            String verificationUrl = "http://localhost:3000/verify-email?token=" + user.getEmailVerificationToken();
+            String text = "Please verify your email by clicking the link below:\n" + verificationUrl + "\n\nIf you did not request this, please ignore this email.";
+
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(to);
+            message.setSubject(subject);
+            message.setText(text);
+            mailSender.send(message);
+
+            logger.info("Sent email verification to: {} with token: {}", user.getEmail(), user.getEmailVerificationToken());
         } catch (Exception e) {
             logger.error("Failed to send email verification to: {}", user.getEmail(), e);
             throw new RuntimeException("Failed to send verification email", e);

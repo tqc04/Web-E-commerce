@@ -24,6 +24,8 @@ import ReviewsPage from './pages/ReviewsPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import ChatbotPage from './pages/ChatbotPage'
 import SupportPage from './pages/SupportPage'
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 
 
@@ -33,46 +35,49 @@ import SupportPage from './pages/SupportPage'
 
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <CartProvider>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: '100vh'
-          }}>
-            <Navbar />
-            <Box component="main" sx={{ 
-              flexGrow: 1, 
-              py: { xs: 2, sm: 3, md: 4 }
+    <NotificationProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <CartProvider>
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              minHeight: '100vh'
             }}>
-              <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/products" element={<ProductsPage />} />
-                <Route path="/products/:productId" element={<ProductDetailPage />} />
-                <Route path="/cart" element={<ShoppingCartPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/orders" element={<OrdersPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignUpPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/favorites" element={<FavoritesPage />} />
-                <Route path="/wishlist" element={<WishlistPage />} />
-                <Route path="/compare" element={<ComparePage />} />
-                <Route path="/reviews" element={<ReviewsPage />} />
-                <Route path="/ai-assistant" element={<ChatbotPage />} />
-                <Route path="/support" element={<SupportPage />} />
+              <Navbar />
+              <Box component="main" sx={{ 
+                flexGrow: 1, 
+                py: { xs: 2, sm: 3, md: 4 }
+              }}>
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/products/:productId" element={<ProductDetailPage />} />
+                  <Route path="/cart" element={<ShoppingCartPage />} />
+                  <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/orders" element={<OrdersPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignUpPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
+                  <Route path="/wishlist" element={<WishlistPage />} />
+                  <Route path="/compare" element={<ComparePage />} />
+                  <Route path="/reviews" element={<ReviewsPage />} />
+                  <Route path="/ai-assistant" element={<ChatbotPage />} />
+                  <Route path="/support" element={<SupportPage />} />
+                  <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-              </Routes>
+                </Routes>
+              </Box>
+              <Footer />
             </Box>
-            <Footer />
-          </Box>
-        </CartProvider>
-      </AuthProvider>
-    </ThemeProvider>
+          </CartProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </NotificationProvider>
   )
 }
 
