@@ -88,11 +88,11 @@ public class OrderController {
             BigDecimal shippingFee = orderRequest.get("shippingFee") != null
                 ? new BigDecimal(orderRequest.get("shippingFee").toString())
                 : BigDecimal.ZERO;
-            
+
             // Get IP address and user agent
             String ipAddress = request.getRemoteAddr();
             String userAgent = request.getHeader("User-Agent");
-            
+
             // Parse order items
             List<Map<String, Object>> itemsData = (List<Map<String, Object>>) orderRequest.get("items");
             List<OrderService.OrderItemRequest> items = itemsData.stream()
@@ -102,15 +102,15 @@ public class OrderController {
                 ))
                 .collect(Collectors.toList());
 
-            // Gọi service, truyền shippingFee
+            // Gọi service, truyền shippingFee và note
             Order createdOrder = orderService.createOrder(userId, items, shippingAddress, billingAddress, paymentMethod, shippingFee, note, ipAddress, userAgent);
             OrderDTO orderDTO = OrderDTO.from(createdOrder);
-            
+
             // Clear cart after successful order
             cartService.clearCartAfterOrder(userId, request.getSession());
-            
+
             return ResponseEntity.ok(orderDTO);
-            
+
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }

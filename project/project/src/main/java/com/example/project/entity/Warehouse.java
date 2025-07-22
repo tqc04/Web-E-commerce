@@ -12,6 +12,8 @@ public class Warehouse {
     private String address;
     private String province; // Tên tỉnh/thành phố
     private String commune;  // Tên xã/phường
+    private Integer districtId; // GHN district_id
+    private String wardCode;    // GHN ward_code
 
     // Getters & Setters
     public Long getId() { return id; }
@@ -25,4 +27,9 @@ public class Warehouse {
 
     public String getCommune() { return commune; }
     public void setCommune(String commune) { this.commune = commune; }
+
+    public Integer getDistrictId() { return districtId; }
+    public void setDistrictId(Integer districtId) { this.districtId = districtId; }
+    public String getWardCode() { return wardCode; }
+    public void setWardCode(String wardCode) { this.wardCode = wardCode; }
 } 
