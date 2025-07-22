@@ -83,7 +83,7 @@ public class ChatbotService {
         aiMessage.setChatSession(savedSession);
         aiMessage.setMessageType(MessageType.ASSISTANT);
         aiMessage.setContent(aiResponse);
-        aiMessage.setAiModel("gpt-4");
+        aiMessage.setAiModel("gemini-pro");
         
         chatMessageRepository.save(aiMessage);
         
@@ -120,7 +120,7 @@ public class ChatbotService {
         aiMessage.setChatSession(session);
         aiMessage.setMessageType(MessageType.ASSISTANT);
         aiMessage.setContent(aiResponse);
-        aiMessage.setAiModel("gpt-4");
+        aiMessage.setAiModel("gemini-pro");
         
         // Analyze message intent
         analyzeMessageIntent(aiMessage, message);

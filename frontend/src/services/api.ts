@@ -572,9 +572,9 @@ class ApiService {
   /**
    * Send AI chat message
    */
-  async sendChatMessage(message: string, sessionId?: string): Promise<ApiResponse<ChatMessage>> {
+  async sendChatMessage(message: string, sessionId?: number): Promise<ApiResponse<ChatMessage>> {
     try {
-      const response = await apiClient.post('/chatbot/chat', {
+      const response = await apiClient.post('/chatbot/message', {
         message,
         sessionId
       })
@@ -605,6 +605,25 @@ class ApiService {
   }
 
   /**
+   * Create a new AI chat session
+   */
+  async createChatSession(userId: number, initialMessage: string = ''): Promise<ApiResponse<any>> {
+    try {
+      const response = await apiClient.post('/chatbot/session', {
+        userId,
+        initialMessage
+      })
+      return {
+        data: response.data,
+        success: true
+      }
+    } catch (error: any) {
+      console.error('Failed to create chat session:', error)
+      throw error
+    }
+  }
+
+  /**
    * Logout
    */
   async logout(): Promise<void> {
@@ -625,6 +644,23 @@ class ApiService {
       console.error('Failed to fetch inventory:', error)
       throw error
     }
+  }
+
+  // Categories API
+  async getCategoriesWithCount(): Promise<any[]> {
+    const response = await apiClient.get('/categories/with-count');
+    return response.data;
+  }
+
+  // Lấy danh sách huyện theo tỉnh
+  async getDistrictsByProvince(provinceCode: string): Promise<any[]> {
+    const response = await apiClient.get(`/shipping/districts/getByProvince?provinceCode=${provinceCode}`)
+    return response.data
+  }
+  // Lấy danh sách xã/phường theo huyện
+  async getWardsByDistrict(districtCode: string): Promise<any[]> {
+    const response = await apiClient.get(`/shipping/wards/getByDistrict?districtCode=${districtCode}`)
+    return response.data
   }
 }
 

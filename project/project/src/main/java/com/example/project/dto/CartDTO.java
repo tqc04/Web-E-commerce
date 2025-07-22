@@ -95,18 +95,28 @@ public class CartDTO {
     }
 
     public void updateItemQuantity(Long productId, Integer newQuantity) {
-        if (newQuantity <= 0) {
+        System.out.println("CartDTO.updateItemQuantity - productId: " + productId + ", newQuantity: " + newQuantity);
+        System.out.println("Current items count: " + items.size());
+        
+        if (newQuantity == null || newQuantity <= 0) {
+            System.out.println("Removing item due to invalid quantity");
             removeItem(productId);
             return;
         }
 
-        items.stream()
-                .filter(item -> item.getProductId().equals(productId))
+        CartItemDTO item = items.stream()
+                .filter(i -> i.getProductId().equals(productId))
                 .findFirst()
-                .ifPresent(item -> {
-                    item.setQuantity(newQuantity);
-                    calculateTotals();
-                });
+                .orElse(null);
+                
+        if (item != null) {
+            System.out.println("Found item, updating quantity from " + item.getQuantity() + " to " + newQuantity);
+            item.setQuantity(newQuantity);
+            item.calculateSubtotal();
+            calculateTotals();
+        } else {
+            System.out.println("Item not found for productId: " + productId);
+        }
     }
 
     public void clearCart() {

@@ -16,7 +16,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -67,6 +66,7 @@ public class AuthController {
                 userMap.put("recommendationEnabled", user.getRecommendationEnabled());
                 userMap.put("createdAt", user.getCreatedAt());
                 userMap.put("updatedAt", user.getUpdatedAt());
+                userMap.put("role", user.getRole() != null ? user.getRole().name() : null);
                 response.put("user", userMap);
                 System.out.println("Login successful for user: " + username);
                 return ResponseEntity.ok(response);
@@ -125,6 +125,7 @@ public class AuthController {
             userMap.put("recommendationEnabled", newUser.getRecommendationEnabled());
             userMap.put("createdAt", newUser.getCreatedAt());
             userMap.put("updatedAt", newUser.getUpdatedAt());
+            userMap.put("role", newUser.getRole() != null ? newUser.getRole().name() : null);
             response.put("user", userMap);
             return ResponseEntity.ok(response);
         } catch (Exception e) {

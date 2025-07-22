@@ -26,8 +26,14 @@ public class CartService {
     @Autowired
     private ProductService productService;
     
+    @Autowired
+    private InventoryService inventoryService;
+    
     // In-memory storage for demo purposes (in production, use Redis or database)
     private final Map<String, CartDTO> cartStorage = new HashMap<>();
+    
+    // Cart expiration time (24 hours)
+    private static final long CART_EXPIRATION_TIME = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
     
     /**
      * Get cart for authenticated user
@@ -39,6 +45,9 @@ public class CartService {
         if (cart == null) {
             cart = new CartDTO(userId);
             cartStorage.put(cartKey, cart);
+        } else {
+            // Update cart timestamp
+            cart.setUpdatedAt(java.time.LocalDateTime.now());
         }
         
         return cart;
@@ -51,10 +60,26 @@ public class CartService {
         String sessionId = session.getId();
         String cartKey = GUEST_CART_PREFIX + sessionId;
         
-        CartDTO cart = cartStorage.get(cartKey);
+        // First try to get from session attribute
+        CartDTO cart = (CartDTO) session.getAttribute("guest_cart");
+        if (cart != null) {
+            System.out.println("Found guest cart in session: " + cart.getItems().size() + " items");
+            // Also update in-memory storage
+            cartStorage.put(cartKey, cart);
+            return cart;
+        }
+        
+        // Then try in-memory storage
+        cart = cartStorage.get(cartKey);
         if (cart == null) {
             cart = new CartDTO(sessionId);
             cartStorage.put(cartKey, cart);
+            // Save to session
+            session.setAttribute("guest_cart", cart);
+            System.out.println("Created new guest cart for session: " + sessionId);
+        } else {
+            // Update cart timestamp
+            cart.setUpdatedAt(java.time.LocalDateTime.now());
         }
         
         return cart;
@@ -64,6 +89,11 @@ public class CartService {
      * Add product to cart
      */
     public CartDTO addToCart(Long userId, Long productId, Integer quantity, HttpSession session) {
+        // Validate input
+        if (productId == null || quantity == null || quantity <= 0) {
+            throw new RuntimeException("Invalid product ID or quantity");
+        }
+        
         // Get product information
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isEmpty()) {
@@ -81,12 +111,21 @@ public class CartService {
             throw new RuntimeException("Product is out of stock");
         }
         
-        if (quantity > stockQuantity) {
-            throw new RuntimeException("Requested quantity exceeds available stock");
-        }
-        
         // Get cart
         CartDTO cart = userId != null ? getCart(userId, session) : getGuestCart(session);
+        
+        // Check if item already exists in cart
+        CartItemDTO existingItem = cart.getItem(productId);
+        int newTotalQuantity = quantity;
+        
+        if (existingItem != null) {
+            newTotalQuantity = existingItem.getQuantity() + quantity;
+        }
+        
+        // Validate total quantity against stock
+        if (newTotalQuantity > stockQuantity) {
+            throw new RuntimeException("Total quantity (" + newTotalQuantity + ") exceeds available stock (" + stockQuantity + ")");
+        }
         
         // Create cart item
         CartItemDTO cartItem = createCartItemFromProduct(product, quantity);
@@ -97,6 +136,8 @@ public class CartService {
         // Save cart
         saveCart(cart, userId, session);
         
+        System.out.println("Added product " + productId + " to cart. New cart total: " + cart.getTotalItems() + " items");
+        
         return cart;
     }
     
@@ -104,21 +145,45 @@ public class CartService {
      * Update cart item quantity
      */
     public CartDTO updateCartItem(Long userId, Long productId, Integer newQuantity, HttpSession session) {
+        System.out.println("Updating cart item - userId: " + userId + ", productId: " + productId + ", newQuantity: " + newQuantity);
+        
+        // Validate input
+        if (productId == null || newQuantity == null) {
+            throw new RuntimeException("Invalid product ID or quantity");
+        }
+        
         CartDTO cart = userId != null ? getCart(userId, session) : getGuestCart(session);
+        System.out.println("Current cart items: " + cart.getItems().size());
+        
+        // Check if item exists in cart
+        CartItemDTO existingItem = cart.getItem(productId);
+        if (existingItem == null) {
+            System.out.println("Product not found in cart, adding it with quantity: " + newQuantity);
+            // If item doesn't exist and quantity > 0, add it to cart
+            if (newQuantity > 0) {
+                return addToCart(userId, productId, newQuantity, session);
+            } else {
+                // If quantity is 0 and item doesn't exist, just return current cart
+                return cart;
+            }
+        }
         
         if (newQuantity <= 0) {
+            System.out.println("Removing item due to zero quantity");
             cart.removeItem(productId);
         } else {
             // Check stock availability
             Integer stockQuantity = getProductStockQuantity(productId);
             if (newQuantity > stockQuantity) {
-                throw new RuntimeException("Requested quantity exceeds available stock");
+                throw new RuntimeException("Requested quantity (" + newQuantity + ") exceeds available stock (" + stockQuantity + ")");
             }
             
+            System.out.println("Updating item quantity from " + existingItem.getQuantity() + " to " + newQuantity);
             cart.updateItemQuantity(productId, newQuantity);
         }
         
         saveCart(cart, userId, session);
+        System.out.println("Updated cart items: " + cart.getItems().size());
         return cart;
     }
     
@@ -249,14 +314,22 @@ public class CartService {
     }
     
     private Integer getProductStockQuantity(Long productId) {
-        // This is simplified - in real app would check actual inventory
         try {
+            // Get stock from both product and inventory
             Optional<Product> productOpt = productRepository.findById(productId);
             if (productOpt.isPresent()) {
                 Product product = productOpt.get();
-                // Return stockQuantity from product entity if it exists
-                // Otherwise return a default stock amount
-                return product.getStockQuantity() != null ? product.getStockQuantity() : 100;
+                Integer productStock = product.getStockQuantity();
+                Integer inventoryStock = inventoryService.getAvailableStockForProduct(productId);
+                
+                // Use the lower of the two values for safety
+                Integer availableStock = Math.min(
+                    productStock != null ? productStock : 0,
+                    inventoryStock != null ? inventoryStock : 0
+                );
+                
+                System.out.println("Stock for product " + productId + " - Product: " + productStock + ", Inventory: " + inventoryStock + ", Available: " + availableStock);
+                return availableStock;
             }
         } catch (Exception e) {
             System.err.println("Error getting stock quantity for product " + productId + ": " + e.getMessage());
@@ -279,5 +352,21 @@ public class CartService {
     private void saveCart(CartDTO cart, Long userId, HttpSession session) {
         String cartKey = userId != null ? "user_" + userId : GUEST_CART_PREFIX + session.getId();
         cartStorage.put(cartKey, cart);
+        
+        // Also save to session for persistence
+        if (userId == null) {
+            // For guest users, save cart to session
+            session.setAttribute("guest_cart", cart);
+            System.out.println("Saved guest cart to session: " + cart.getItems().size() + " items");
+        }
+    }
+    
+    /**
+     * Clear cart after successful order
+     */
+    public void clearCartAfterOrder(Long userId, HttpSession session) {
+        String cartKey = userId != null ? "user_" + userId : GUEST_CART_PREFIX + session.getId();
+        cartStorage.remove(cartKey);
+        System.out.println("Cart cleared after order for: " + cartKey);
     }
 } 

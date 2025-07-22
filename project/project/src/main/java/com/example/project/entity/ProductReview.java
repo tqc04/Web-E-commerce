@@ -46,10 +46,10 @@ public class ProductReview {
     private String content;
     
     @Column(name = "verified_purchase")
-    private boolean verifiedPurchase = false;
+    private Boolean verifiedPurchase = false;
     
     @Column(name = "is_approved")
-    private boolean isApproved = false;
+    private Boolean isApproved = false;
     
     @Column(name = "helpful_votes")
     private Integer helpfulVotes = 0;
@@ -74,7 +74,7 @@ public class ProductReview {
     private Double spamScore;
     
     @Column(name = "is_spam")
-    private boolean isSpam = false;
+    private Boolean isSpam = false;
     
     @Column(name = "language_detected")
     private String languageDetected;
@@ -83,7 +83,7 @@ public class ProductReview {
     private Double moderationScore;
     
     @Column(name = "needs_moderation")
-    private boolean needsModeration = false;
+    private Boolean needsModeration = false;
     
     @Column(name = "approved_by")
     private String approvedBy;
@@ -167,19 +167,19 @@ public class ProductReview {
         this.content = content;
     }
     
-    public boolean isVerifiedPurchase() {
+    public Boolean isVerifiedPurchase() {
         return verifiedPurchase;
     }
     
-    public void setVerifiedPurchase(boolean verifiedPurchase) {
+    public void setVerifiedPurchase(Boolean verifiedPurchase) {
         this.verifiedPurchase = verifiedPurchase;
     }
     
-    public boolean isApproved() {
+    public Boolean isApproved() {
         return isApproved;
     }
     
-    public void setApproved(boolean approved) {
+    public void setApproved(Boolean approved) {
         isApproved = approved;
     }
     
@@ -239,11 +239,11 @@ public class ProductReview {
         this.spamScore = spamScore;
     }
     
-    public boolean isSpam() {
+    public Boolean isSpam() {
         return isSpam;
     }
     
-    public void setSpam(boolean spam) {
+    public void setSpam(Boolean spam) {
         isSpam = spam;
     }
     
@@ -263,11 +263,11 @@ public class ProductReview {
         this.moderationScore = moderationScore;
     }
     
-    public boolean isNeedsModeration() {
+    public Boolean isNeedsModeration() {
         return needsModeration;
     }
     
-    public void setNeedsModeration(boolean needsModeration) {
+    public void setNeedsModeration(Boolean needsModeration) {
         this.needsModeration = needsModeration;
     }
     
@@ -319,11 +319,11 @@ public class ProductReview {
     }
     
     public boolean isPositiveReview() {
-        return rating >= 4;
+        return rating != null && rating >= 4;
     }
     
     public boolean isNegativeReview() {
-        return rating <= 2;
+        return rating != null && rating <= 2;
     }
     
     public void approve(String approvedBy) {

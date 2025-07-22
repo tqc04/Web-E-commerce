@@ -16,7 +16,6 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/products")
-@CrossOrigin(origins = "*")
 public class ProductController {
 
     @Autowired
@@ -101,6 +100,28 @@ public class ProductController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    /**
+     * Update stock for all products (admin endpoint)
+     */
+    @PostMapping("/update-stock")
+    public ResponseEntity<Map<String, String>> updateAllStock(@RequestBody Map<String, Integer> request) {
+        try {
+            Integer stockQuantity = request.get("stockQuantity");
+            if (stockQuantity == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "stockQuantity is required"));
+            }
+            
+            int updatedCount = productService.updateAllStock(stockQuantity);
+            return ResponseEntity.ok(Map.of(
+                "message", "Updated stock for " + updatedCount + " products",
+                "stockQuantity", stockQuantity.toString()
+            ));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 } 
