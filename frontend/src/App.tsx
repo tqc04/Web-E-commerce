@@ -33,6 +33,12 @@ import { NotificationProvider } from './contexts/NotificationContext';
 
 
 
+
+
+
+
+
+
 function App() {
   const location = useLocation();
   const authPaths = ['/login', '/signup', '/forgot-password', '/verify-email'];
@@ -56,6 +62,7 @@ function App() {
               py: isAuthPage ? 8 : 0
             }}>
               <Routes>
+
                   <Route path="/" element={<HomePage />} />
                   <Route path="/products" element={<ProductsPage />} />
                   <Route path="/products/:productId" element={<ProductDetailPage />} />
@@ -75,7 +82,10 @@ function App() {
                   <Route path="/support" element={<SupportPage />} />
                   <Route path="/verify-email" element={<VerifyEmailPage />} />
 
-                </Routes>
+
+
+              </Routes>
+
             </Box>
             {!isAuthPage && <Footer />}
           </CartProvider>
