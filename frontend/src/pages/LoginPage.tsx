@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useNotification } from '../contexts/NotificationContext';
 
 const LoginPage: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -31,6 +32,7 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { notify } = useNotification();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +40,17 @@ const LoginPage: React.FC = () => {
 
     if (!username || !password) {
       setError('Please enter both username and password');
+      notify('Please enter both username and password', 'warning');
       return;
     }
 
     const success = await login(username, password);
     if (success) {
+      notify('Login successful!', 'success');
       navigate('/');
     } else {
       setError('Invalid username or password');
+      notify('Invalid username or password', 'error');
     }
   };
 
@@ -106,19 +111,6 @@ const LoginPage: React.FC = () => {
                 Sign in to your account to continue
               </Typography>
             </Box>
-
-            {error && (
-              <Alert 
-                severity="error" 
-                sx={{ 
-                  width: '100%', 
-                  mb: 3,
-                  borderRadius: 2
-                }}
-              >
-                {error}
-              </Alert>
-            )}
 
             {/* Social Login Buttons */}
             <Box sx={{ width: '100%', mb: 3 }}>

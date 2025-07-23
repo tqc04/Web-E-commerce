@@ -1,5 +1,5 @@
 import React from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { Box, CssBaseline, ThemeProvider } from '@mui/material'
 
 import { CartProvider } from './contexts/CartContext'
@@ -24,6 +24,14 @@ import ReviewsPage from './pages/ReviewsPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import ChatbotPage from './pages/ChatbotPage'
 import SupportPage from './pages/SupportPage'
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import { NotificationProvider } from './contexts/NotificationContext';
+
+
+
+
+
+
 
 
 
@@ -32,47 +40,58 @@ import SupportPage from './pages/SupportPage'
 
 
 function App() {
+  const location = useLocation();
+  const authPaths = ['/login', '/signup', '/forgot-password', '/verify-email'];
+  const isAuthPage = authPaths.includes(location.pathname);
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <CartProvider>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            minHeight: '100vh'
-          }}>
+    <NotificationProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <AuthProvider>
+          <CartProvider>
             <Navbar />
-            <Box component="main" sx={{ 
-              flexGrow: 1, 
-              py: { xs: 2, sm: 3, md: 4 }
+            <Box sx={{
+              minHeight: '100vh',
+              display: 'flex',
+              flexDirection: 'column',
+              background: isAuthPage
+                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                : 'none',
+              alignItems: isAuthPage ? 'center' : 'stretch',
+              justifyContent: isAuthPage ? 'center' : 'flex-start',
+              py: isAuthPage ? 8 : 0
             }}>
               <Routes>
-                <Route path="/" element={<HomePage />} />
-                <Route path="/products" element={<ProductsPage />} />
-                <Route path="/products/:productId" element={<ProductDetailPage />} />
-                <Route path="/cart" element={<ShoppingCartPage />} />
-                <Route path="/checkout" element={<CheckoutPage />} />
-                <Route path="/orders" element={<OrdersPage />} />
-                <Route path="/admin" element={<AdminPage />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup" element={<SignUpPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/favorites" element={<FavoritesPage />} />
-                <Route path="/wishlist" element={<WishlistPage />} />
-                <Route path="/compare" element={<ComparePage />} />
-                <Route path="/reviews" element={<ReviewsPage />} />
-                <Route path="/ai-assistant" element={<ChatbotPage />} />
-                <Route path="/support" element={<SupportPage />} />
+
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/products/:productId" element={<ProductDetailPage />} />
+                  <Route path="/cart" element={<ShoppingCartPage />} />
+                  <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/orders" element={<OrdersPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignUpPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/favorites" element={<FavoritesPage />} />
+                  <Route path="/wishlist" element={<WishlistPage />} />
+                  <Route path="/compare" element={<ComparePage />} />
+                  <Route path="/reviews" element={<ReviewsPage />} />
+                  <Route path="/ai-assistant" element={<ChatbotPage />} />
+                  <Route path="/support" element={<SupportPage />} />
+                  <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+
 
               </Routes>
+
             </Box>
-            <Footer />
-          </Box>
-        </CartProvider>
-      </AuthProvider>
-    </ThemeProvider>
+            {!isAuthPage && <Footer />}
+          </CartProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </NotificationProvider>
   )
 }
 
