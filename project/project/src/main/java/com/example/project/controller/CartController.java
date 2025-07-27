@@ -8,6 +8,11 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpSession;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import com.example.project.entity.User;
+import com.example.project.service.UserService;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -15,6 +20,9 @@ public class CartController {
 
     @Autowired
     private CartService cartService;
+
+    @Autowired
+    private UserService userService;
 
     /**
      * Get current cart
@@ -43,6 +51,16 @@ public class CartController {
             @RequestParam(required = false) Long userId,
             HttpSession session) {
         try {
+            if (userId == null) {
+                Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+                if (authentication != null && authentication.isAuthenticated() && !"anonymousUser".equals(authentication.getPrincipal())) {
+                    String username = authentication.getName();
+                    Optional<User> userOpt = userService.findByUsernameOrEmail(username);
+                    if (userOpt.isPresent()) {
+                        userId = userOpt.get().getId();
+                    }
+                }
+            }
             Long productId = Long.valueOf(request.get("productId").toString());
             Integer quantity = Integer.valueOf(request.get("quantity").toString());
             

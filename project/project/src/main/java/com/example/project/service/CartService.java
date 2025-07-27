@@ -315,21 +315,14 @@ public class CartService {
     
     private Integer getProductStockQuantity(Long productId) {
         try {
-            // Get stock from both product and inventory
+            // Get stock directly from product
             Optional<Product> productOpt = productRepository.findById(productId);
             if (productOpt.isPresent()) {
                 Product product = productOpt.get();
                 Integer productStock = product.getStockQuantity();
-                Integer inventoryStock = inventoryService.getAvailableStockForProduct(productId);
                 
-                // Use the lower of the two values for safety
-                Integer availableStock = Math.min(
-                    productStock != null ? productStock : 0,
-                    inventoryStock != null ? inventoryStock : 0
-                );
-                
-                System.out.println("Stock for product " + productId + " - Product: " + productStock + ", Inventory: " + inventoryStock + ", Available: " + availableStock);
-                return availableStock;
+                System.out.println("Stock for product " + productId + " - Available: " + productStock);
+                return productStock != null ? productStock : 0;
             }
         } catch (Exception e) {
             System.err.println("Error getting stock quantity for product " + productId + ": " + e.getMessage());

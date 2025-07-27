@@ -17,14 +17,14 @@ const apiClient: AxiosInstance = axios.create({
 // Request interceptor for auth tokens
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token')
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('jwt');
     if (token && config.headers) {
-      config.headers['Authorization'] = `Bearer ${token}`
+      config.headers['Authorization'] = `Bearer ${token}`;
     }
-    return config
+    return config;
   },
   (error) => Promise.reject(error)
-)
+);
 
 // Response interceptor for error handling
 apiClient.interceptors.response.use(

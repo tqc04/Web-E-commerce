@@ -76,14 +76,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :startDate")
     long countOrdersCreatedAfter(@Param("startDate") LocalDateTime startDate);
     
-    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = 'COMPLETED'")
-    BigDecimal getTotalRevenue();
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = :status")
+    BigDecimal getTotalRevenue(@Param("status") OrderStatus status);
     
-    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = 'COMPLETED' AND o.createdAt >= :startDate")
-    BigDecimal getRevenueAfter(@Param("startDate") LocalDateTime startDate);
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.status = :status AND o.createdAt >= :startDate")
+    BigDecimal getRevenueAfter(@Param("status") OrderStatus status, @Param("startDate") LocalDateTime startDate);
     
-    @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.status = 'COMPLETED'")
-    BigDecimal getAverageOrderValue();
+    @Query("SELECT AVG(o.totalAmount) FROM Order o WHERE o.status = :status")
+    BigDecimal getAverageOrderValue(@Param("status") OrderStatus status);
     
     @Query("SELECT AVG(o.fraudScore) FROM Order o WHERE o.fraudScore IS NOT NULL")
     Double getAverageFraudScore();

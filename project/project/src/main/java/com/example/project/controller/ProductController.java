@@ -39,12 +39,17 @@ public class ProductController {
     }
 
     /**
-     * Lấy danh sách tất cả sản phẩm active
+     * Lấy danh sách tất cả sản phẩm active với search và filter
      */
     @GetMapping
-    public ResponseEntity<Page<ProductDTO>> getAllProducts(Pageable pageable) {
+    public ResponseEntity<Page<ProductDTO>> getAllProducts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "id,asc") String sort) {
         try {
-            Page<Product> products = productService.findAllActive(pageable);
+            Page<Product> products = productService.findAllActiveWithFilters(page, size, search, category, sort);
             Page<ProductDTO> dtoPage = products.map(ProductDTO::from);
             return ResponseEntity.ok(dtoPage);
         } catch (Exception e) {

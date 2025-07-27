@@ -82,8 +82,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           isActive: true
         };
         
-        // Store in localStorage
-        localStorage.setItem('auth_token', authToken);
+        // Store in localStorage (đồng bộ key với Google login)
+        localStorage.setItem('jwt', authToken);
+        localStorage.setItem('auth_token', authToken); // giữ lại cho tương thích cũ
         localStorage.setItem('auth_user', JSON.stringify(userWithRoles));
         
         // Update state

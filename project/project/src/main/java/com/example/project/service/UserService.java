@@ -4,6 +4,7 @@ import com.example.project.entity.User;
 import com.example.project.entity.UserRole;
 import com.example.project.dto.UserCreateRequest;
 import com.example.project.repository.UserRepository;
+import com.example.project.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,9 @@ public class UserService {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     /**
      * Authenticate user with username/email and password
@@ -43,9 +47,8 @@ public class UserService {
      * Generate JWT token for user (simplified implementation)
      */
     public String generateToken(User user) {
-        // This is a simplified token generation
-        // In production, use proper JWT library like jjwt
-        return "jwt_token_" + user.getId() + "_" + user.getUsername();
+        // Sinh JWT thực sự bằng JwtUtil
+        return jwtUtil.generateToken(user.getEmail());
     }
 
     /**
@@ -98,6 +101,15 @@ public class UserService {
      */
     public Optional<User> findByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    /**
+     * Find user by username or email
+     */
+    public Optional<User> findByUsernameOrEmail(String usernameOrEmail) {
+        Optional<User> userOpt = findByUsername(usernameOrEmail);
+        if (userOpt.isPresent()) return userOpt;
+        return findByEmail(usernameOrEmail);
     }
 
     /**

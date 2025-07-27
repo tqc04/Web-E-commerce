@@ -123,7 +123,8 @@ const LoginPage: React.FC = () => {
                     fullWidth
                     variant="outlined"
                     startIcon={<GoogleIcon />}
-                    onClick={() => handleSocialLogin('Google')}
+                    component="a"
+                    href="http://localhost:8081/oauth2/authorization/google"
                     sx={{
                       py: 1.5,
                       borderRadius: 2,

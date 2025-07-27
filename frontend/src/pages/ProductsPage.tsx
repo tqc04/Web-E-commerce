@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import {
   Container,
   Grid,
@@ -87,6 +87,7 @@ const ProductsPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [itemsPerPage] = useState(12);
+  const [totalElements, setTotalElements] = useState(0);
 
   // Mock data - sẽ được thay thế bằng API calls
   const mockProducts: Product[] = [
@@ -202,25 +203,30 @@ const ProductsPage: React.FC = () => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const response = await apiService.getProducts();
+        const response = await apiService.getProducts(currentPage - 1, itemsPerPage, searchTerm, selectedCategory !== 'all' ? selectedCategory : undefined);
         setProducts(response.data.content);
         setFilteredProducts(response.data.content);
+        setTotalElements(response.data.totalElements);
       } catch (error) {
         console.error('Error fetching products:', error);
         // Fallback to mock data if API fails
         setProducts(mockProducts);
         setFilteredProducts(mockProducts);
+        setTotalElements(mockProducts.length);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProducts();
-  }, []);
+  }, [currentPage, itemsPerPage, searchTerm, selectedCategory]);
 
   useEffect(() => {
-    filterProducts();
-  }, [searchTerm, selectedCategory, selectedBrand, priceRange, sortBy, products]);
+    // Only filter locally if we have all products loaded
+    if (products.length > 0 && products.length === totalElements) {
+      filterProducts();
+    }
+  }, [selectedBrand, priceRange, sortBy, products]);
 
   const filterProducts = () => {
     let filtered = [...products];
@@ -296,14 +302,12 @@ const ProductsPage: React.FC = () => {
     setSelectedBrand('all');
     setPriceRange([0, 1000000000]);
     setSortBy('featured');
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
-  const paginatedProducts = filteredProducts.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
+  // Use server-side pagination data
+  const paginatedProducts = filteredProducts;
+  const totalPages = Math.ceil(totalElements / itemsPerPage);
 
   return (
     <Container maxWidth="xl" sx={{ py: 4 }}>
