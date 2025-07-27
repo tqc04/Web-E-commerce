@@ -100,4 +100,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.category LEFT JOIN FETCH p.brand WHERE p.isActive = true")
     Page<Product> findActiveWithCategoryAndBrand(Pageable pageable);
+    
+    @Query("SELECT p FROM Product p JOIN p.category c WHERE c.name = :categoryName AND p.isActive = true")
+    Page<Product> findByCategoryNameAndIsActiveTrue(@Param("categoryName") String categoryName, Pageable pageable);
 } 

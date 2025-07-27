@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 
 @Service
 public class EmailService {
@@ -19,6 +20,7 @@ public class EmailService {
     /**
      * Send email verification
      */
+    @Async
     public void sendEmailVerification(User user) {
         try {
             String to = user.getEmail();
@@ -42,6 +44,7 @@ public class EmailService {
     /**
      * Send password reset email
      */
+    @Async
     public void sendPasswordResetEmail(User user, String resetToken) {
         try {
             String to = user.getEmail();
@@ -65,6 +68,7 @@ public class EmailService {
     /**
      * Send welcome email after registration
      */
+    @Async
     public void sendWelcomeEmail(User user) {
         try {
             logger.info("Sending welcome email to: {}", user.getEmail());
@@ -79,6 +83,7 @@ public class EmailService {
     /**
      * Send order confirmation email
      */
+    @Async
     public void sendOrderConfirmationEmail(User user, String orderNumber) {
         try {
             logger.info("Sending order confirmation email to: {} for order: {}", 

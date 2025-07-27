@@ -1,9 +1,21 @@
 package com.example.project.config;
 
+import com.example.project.security.XSSRequestWrapper;
+import jakarta.servlet.Filter;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+import java.io.IOException;
+
+
 
 @Configuration
 public class WebConfig {
@@ -12,15 +24,8 @@ public class WebConfig {
         return new WebMvcConfigurer() {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
-                registry.addMapping("/api/**")
-                        .allowedOriginPatterns(
-                            "http://localhost:3000",     // React/Vite development
-                            "http://localhost:3001",     // Alternative React port
-                            "http://localhost:8080",     // Alternative backend port
-                            "http://127.0.0.1:3000",     // Alternative localhost
-                            "http://127.0.0.1:3001",     // Alternative localhost
-                            "http://127.0.0.1:8080"      // Alternative localhost
-                        )
+                registry.addMapping("/**")
+                        .allowedOrigins("http://localhost:3000")
                         .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                         .allowedHeaders("*")
                         .exposedHeaders("Authorization", "Content-Type")
@@ -28,5 +33,20 @@ public class WebConfig {
                         .maxAge(3600); // 1 hour cache
             }
         };
+    }
+
+    @Bean
+    public FilterRegistrationBean<Filter> xssFilter() {
+        FilterRegistrationBean<Filter> registrationBean = new FilterRegistrationBean<>();
+        registrationBean.setFilter(new Filter() {
+            @Override
+            public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
+                HttpServletRequest req = (HttpServletRequest) request;
+                XSSRequestWrapper wrappedRequest = new XSSRequestWrapper(req);
+                chain.doFilter(wrappedRequest, response);
+            }
+        });
+        registrationBean.addUrlPatterns("/*");
+        return registrationBean;
     }
 }

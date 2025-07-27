@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -23,6 +24,9 @@ public class AuthController {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /**
      * User login
@@ -272,6 +276,43 @@ public class AuthController {
         }
     }
 
+    /**
+     * Đăng ký tài khoản từ Google OAuth2 (bổ sung username, password)
+     */
+    @PostMapping("/oauth2-signup")
+    public ResponseEntity<?> oauth2Signup(@RequestBody Map<String, String> req) {
+        String email = req.get("email");
+        String username = req.get("username");
+        String password = req.get("password");
+        if (email == null || username == null || password == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Thiếu thông tin đăng ký."));
+        }
+        if (userService.findByEmail(email).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Email đã tồn tại."));
+        }
+        if (userService.findByUsername(username).isPresent()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Tên đăng nhập đã tồn tại."));
+        }
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(username);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setIsActive(true);
+        user.setIsEmailVerified(true);
+        user.setRole(UserRole.USER);
+        userService.save(user);
+        String token = userService.generateToken(user);
+        return ResponseEntity.ok(Map.of(
+            "token", token,
+            "user", Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "email", user.getEmail(),
+                "role", user.getRole().name(),
+                "isActive", user.getIsActive()
+            )
+        ));
+    }
 
 
 //    /**

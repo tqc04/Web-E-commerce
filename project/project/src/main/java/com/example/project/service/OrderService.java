@@ -21,10 +21,14 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @Transactional
 public class OrderService {
+    
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
     
     @Autowired
     private OrderRepository orderRepository;
@@ -42,6 +46,9 @@ public class OrderService {
     private InventoryService inventoryService;
     
     @Autowired
+    private OrderStatusHistoryRepository orderStatusHistoryRepository;
+    
+    @Autowired
     private InventoryItemRepository inventoryItemRepository;
     
     @Autowired
@@ -54,138 +61,101 @@ public class OrderService {
     private AIService aiService;
     
     /**
-     * Create new order
+     * Create new order with inventory reservation
      */
-    public Order createOrder(Long userId, List<OrderItemRequest> items, 
-                           String shippingAddress, String billingAddress,
-                           String paymentMethod, BigDecimal shippingFee, String note, String ipAddress, String userAgent) {
+    @Transactional
+    public Order createOrder(Long userId, List<OrderItemRequest> items, String shippingAddress, 
+                        String billingAddress, String paymentMethod, BigDecimal shippingFee, 
+                        String note, String ipAddress, String userAgent) {
         
-        System.out.println("OrderService.createOrder - userId: " + userId + ", items: " + items.size());
+        // Generate order number
+        String orderNumber = generateOrderNumber();
         
-        try {
+        // Validate and reserve inventory for all items
+        List<OrderItem> orderItems = new ArrayList<>();
+        BigDecimal totalAmount = BigDecimal.ZERO;
         
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (userOpt.isEmpty()) {
-            throw new UserNotFoundException("User not found with id: " + userId);
-        }
-        
-        User user = userOpt.get();
-        System.out.println("Found user: " + user.getUsername());
-        
-        // Create order
-        Order order = new Order();
-        order.setUser(user);
-        order.setOrderNumber(generateOrderNumber());
-        order.setShippingAddress(shippingAddress); // JSON string
-        order.setBillingAddress(billingAddress);   // JSON string
-        order.setPaymentMethod(paymentMethod);
-        order.setStatus(OrderStatus.PENDING); // Start with PENDING
-        order.setNotes(note); // Gán note vào trường notes
-        
-        // Set timestamps
-        LocalDateTime now = LocalDateTime.now();
-        order.setCreatedAt(now);
-        order.setUpdatedAt(now);
-        
-        System.out.println("Created order object with number: " + order.getOrderNumber());
-        
-        // Add order items
-        BigDecimal subtotal = BigDecimal.ZERO;
         for (OrderItemRequest itemRequest : items) {
-            System.out.println("Processing item - productId: " + itemRequest.getProductId() + ", quantity: " + itemRequest.getQuantity());
-            
-            Optional<Product> productOpt = productRepository.findById(itemRequest.getProductId());
+            // Check if product exists and is active
+            Optional<Product> productOpt = productRepository.findById(itemRequest.productId());
             if (productOpt.isEmpty()) {
-                throw new ProductNotFoundException("Product not found with id: " + itemRequest.getProductId());
+                throw new RuntimeException("Product not found: " + itemRequest.productId());
             }
             
             Product product = productOpt.get();
-            
-            // Get stock from both product and inventory
-            Integer productStock = product.getStockQuantity();
-            Integer inventoryStock = inventoryService.getAvailableStockForProduct(product.getId());
-            
-            // Use the lower of the two values for safety
-            Integer availableStock = Math.min(
-                productStock != null ? productStock : 0,
-                inventoryStock != null ? inventoryStock : 0
-            );
-            
-            System.out.println("Found product: " + product.getName() + 
-                ", product stock: " + productStock + 
-                ", inventory stock: " + inventoryStock + 
-                ", available stock: " + availableStock);
-            
-            // Check stock availability
-            if (availableStock < itemRequest.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product " + product.getName() + 
-                    ". Available: " + availableStock + ", Requested: " + itemRequest.getQuantity());
+            if (!product.getIsActive()) {
+                throw new RuntimeException("Product is not active: " + itemRequest.productId());
             }
             
+            // Reserve inventory
+            boolean reserved = inventoryService.reserveInventory(
+                itemRequest.productId(), 
+                itemRequest.quantity(), 
+                orderNumber
+            );
+            
+            if (!reserved) {
+                throw new RuntimeException("Insufficient stock for product: " + product.getName());
+            }
+            
+            // Calculate item total
+            BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(itemRequest.quantity()));
+            totalAmount = totalAmount.add(itemTotal);
+            
+            // Create order item
             OrderItem orderItem = new OrderItem();
-            orderItem.setOrder(order);
             orderItem.setProduct(product);
-            orderItem.setQuantity(itemRequest.getQuantity());
+            orderItem.setQuantity(itemRequest.quantity());
             orderItem.setPrice(product.getPrice());
-            orderItem.setCreatedAt(LocalDateTime.now());
-            orderItem.setUpdatedAt(LocalDateTime.now());
-            
-            order.getOrderItems().add(orderItem);
-            subtotal = subtotal.add(product.getPrice().multiply(BigDecimal.valueOf(itemRequest.getQuantity())));
-            
-            System.out.println("Added order item. Subtotal now: " + subtotal);
-            
-            // Update both product stock and inventory stock
-            Integer newProductStock = (productStock != null ? productStock : 0) - itemRequest.getQuantity();
-            Integer newInventoryStock = (inventoryStock != null ? inventoryStock : 0) - itemRequest.getQuantity();
-            
-            // Update product stock
-            product.setStockQuantity(newProductStock);
-            productRepository.save(product);
-            
-            // Update inventory stock
-            inventoryService.updateAvailableStock(product.getId(), newInventoryStock);
-            
-            System.out.println("Updated stock for product " + product.getId() + 
-                " - Product: " + productStock + " -> " + newProductStock + 
-                ", Inventory: " + inventoryStock + " -> " + newInventoryStock);
+            orderItems.add(orderItem);
         }
         
-        order.setSubtotal(subtotal);
+        // Add shipping fee
+        totalAmount = totalAmount.add(shippingFee);
+        
+        // Get user
+        Optional<User> userOpt = userRepository.findById(userId);
+        if (userOpt.isEmpty()) {
+            throw new RuntimeException("User not found: " + userId);
+        }
+        User user = userOpt.get();
+        
+        // Create order
+        Order order = new Order();
+        order.setOrderNumber(orderNumber);
+        order.setUser(user);
+        order.setStatus(OrderStatus.PENDING);
+        order.setTotalAmount(totalAmount);
+        order.setShippingAddress(shippingAddress);
+        order.setBillingAddress(billingAddress);
+        order.setPaymentMethod(paymentMethod);
         order.setShippingAmount(shippingFee);
-        // Calculate tax
-        BigDecimal taxAmount = subtotal.multiply(BigDecimal.valueOf(0.1)); // 10% tax
-        order.setTaxAmount(taxAmount);
-        order.setTotalAmount(subtotal.add(taxAmount).add(shippingFee));
+        order.setNotes(note);
         
-        System.out.println("Order totals - subtotal: " + subtotal + ", tax: " + taxAmount + ", shipping: " + shippingFee + ", total: " + order.getTotalAmount());
-        
-        // AI Fraud Detection (disabled for now)
-        order.setFraudScore(0.1); // Low risk by default
-        order.setFraudAnalysis("Fraud detection disabled");
-        order.setRiskLevel(RiskLevel.LOW);
-        order.setFlaggedForReview(false);
+        // Set order reference in items
+        for (OrderItem item : orderItems) {
+            item.setOrder(order);
+        }
         
         // Save order
-        System.out.println("Saving order to database...");
         Order savedOrder = orderRepository.save(order);
-        System.out.println("Order saved with ID: " + savedOrder.getId());
         
         // Create initial status history
-        System.out.println("Creating status history...");
-        createStatusHistory(savedOrder, OrderStatus.PENDING, OrderStatus.PENDING, "System", "Order created", ipAddress, userAgent, true);
+        OrderStatusHistory statusHistory = new OrderStatusHistory(
+            savedOrder, 
+            OrderStatus.PENDING, 
+            OrderStatus.PENDING, 
+            "system"
+        );
+        statusHistory.setNotes("Order created");
+        statusHistoryRepository.save(statusHistory);
         
-        // Auto-approve all orders for now (fraud detection disabled)
-        System.out.println("Updating order status...");
-        updateOrderStatus(savedOrder.getId(), OrderStatus.PENDING_APPROVAL, "System auto-progression", "System", ipAddress, userAgent);
+        // Perform basic fraud analysis (simplified)
+        if (savedOrder.getTotalAmount().compareTo(BigDecimal.valueOf(1000000)) > 0) {
+            flagOrderForReview(savedOrder, "High value order");
+        }
         
         return savedOrder;
-        
-        } catch (Exception e) {
-            System.err.println("Error creating order: " + e.getMessage());
-            e.printStackTrace();
-            throw e;
-        }
     }
     
     /**
@@ -305,22 +275,82 @@ public class OrderService {
     }
     
     /**
-     * Cancel order with proper validation
+     * Cancel order and release inventory
      */
+    @Transactional
     public void cancelOrder(Long orderId, String reason, String cancelledBy, String ipAddress, String userAgent) {
         Optional<Order> orderOpt = orderRepository.findById(orderId);
         if (orderOpt.isEmpty()) {
-            throw new OrderNotFoundException("Order not found with id: " + orderId);
+            throw new RuntimeException("Order not found: " + orderId);
         }
         
         Order order = orderOpt.get();
         
         // Check if order can be cancelled
         if (!canCancelOrder(order)) {
-            throw new IllegalStateException("Order cannot be cancelled in current status: " + order.getStatus());
+            throw new RuntimeException("Order cannot be cancelled in current status: " + order.getStatus());
         }
         
-        updateOrderStatus(orderId, OrderStatus.CANCELLED, reason, cancelledBy, ipAddress, userAgent);
+        // Release reserved inventory
+        for (OrderItem item : order.getOrderItems()) {
+            inventoryService.releaseInventory(
+                item.getProduct().getId(),
+                item.getQuantity(),
+                order.getOrderNumber()
+            );
+        }
+        
+        // Update order status
+        order.setStatus(OrderStatus.CANCELLED);
+        orderRepository.save(order);
+        
+        // Create status history (simplified)
+        OrderStatusHistory statusHistory = new OrderStatusHistory(
+            order, 
+            order.getStatus(), 
+            OrderStatus.CANCELLED, 
+            cancelledBy
+        );
+        statusHistory.setNotes("Order cancelled: " + reason);
+        statusHistory.setIpAddress(ipAddress);
+        statusHistory.setUserAgent(userAgent);
+        orderStatusHistoryRepository.save(statusHistory);
+    }
+    
+    /**
+     * Confirm order and finalize inventory
+     */
+    @Transactional
+    public void confirmOrder(Long orderId, String confirmedBy) {
+        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        if (orderOpt.isEmpty()) {
+            throw new RuntimeException("Order not found: " + orderId);
+        }
+        
+        Order order = orderOpt.get();
+        
+        // Confirm inventory reservation
+        for (OrderItem item : order.getOrderItems()) {
+            inventoryService.confirmInventoryReservation(
+                item.getProduct().getId(),
+                item.getQuantity(),
+                order.getOrderNumber()
+            );
+        }
+        
+        // Update order status
+        order.setStatus(OrderStatus.CONFIRMED);
+        orderRepository.save(order);
+        
+        // Create status history (simplified)
+        OrderStatusHistory statusHistory = new OrderStatusHistory(
+            order, 
+            order.getStatus(), 
+            OrderStatus.CONFIRMED, 
+            confirmedBy
+        );
+        statusHistory.setNotes("Order confirmed");
+        orderStatusHistoryRepository.save(statusHistory);
     }
     
     /**
@@ -381,7 +411,7 @@ public class OrderService {
             return parseFraudAnalysis(response, order);
             
         } catch (Exception e) {
-            System.err.println("AI fraud detection failed: " + e.getMessage());
+            logger.error("AI fraud detection failed: " + e.getMessage());
             
             // Fallback to rule-based analysis
             return performRuleBasedFraudAnalysis(order, user);
@@ -559,7 +589,7 @@ public class OrderService {
         orderRepository.save(order);
         
         // TODO: Send notification to admin/review team
-        System.out.println("Order " + order.getOrderNumber() + " flagged for review: " + reason);
+        logger.info("Order " + order.getOrderNumber() + " flagged for review: " + reason);
     }
     
     /**
@@ -635,8 +665,8 @@ public class OrderService {
             this.quantity = quantity;
         }
         
-        public Long getProductId() { return productId; }
-        public Integer getQuantity() { return quantity; }
+        public Long productId() { return productId; }
+        public Integer quantity() { return quantity; }
     }
     
     public static class FraudAnalysis {
